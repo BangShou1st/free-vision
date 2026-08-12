@@ -1,0 +1,4 @@
+interface:
+  display_name: "Free Vision"
+  short_description: "Inspect image paths or URLs with currently free vision models"
+  default_prompt: "Use $free-vision to inspect the provided image path or URL, then use the visual evidence to answer the user's actual request naturally."
