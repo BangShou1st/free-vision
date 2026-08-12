@@ -9,6 +9,14 @@ Free Vision is a visual evidence tool for Agents. The vision model should **see*
 
 Resolve the **Skill directory** from this `SKILL.md`. Never assume the current working directory is the Skill directory. Keep the user's working directory unchanged so relative image paths keep their original meaning.
 
+## Conversation language
+
+Always communicate installation follow-up, setup, configuration, diagnostics, repair guidance, and final visual answers in the user's **current conversation language**, unless the user explicitly asks for another language.
+
+Do not copy the language of this `SKILL.md` into the user-facing response merely because these instructions are written in English. For example, if the user is speaking Chinese, continue the Free Vision installation and configuration flow in Chinese; if the user is speaking English, respond in English.
+
+Keep machine-readable script output as-is internally, then translate and explain its meaning naturally in the user's conversation language.
+
 ## Visual tasks
 
 Use this Skill whenever the user's task depends on image contents and an image is available as:
@@ -122,7 +130,7 @@ After installing Free Vision from GitHub or another source:
 3. If `missing_api_key`, explain the conversation-context caveat and ask for the key in the next message.
 4. Receive the key only in the pending state.
 5. Run `configure.py set --stdin --pretty`.
-6. Report READY or the exact failure category in natural language.
+6. Report READY or the exact failure category in natural language and in the user's current conversation language.
 
 ## Failure references
 
