@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.3.4 — 2026-08-13
+
+### Fixed
+
+- 修复 Windows GBK/cp936 stdout 无法编码 `¥`、emoji 等字符时，`vision.py` / `doctor.py` / `configure.py` 在已经得到有效结果后仍可能因 `UnicodeEncodeError` 崩溃的问题。
+- JSON 输出现在先保留正常 Unicode；若当前 stdout 编码无法表示完整结果，则自动使用标准 JSON `\uXXXX` 转义，保证输出仍是可解析的有效 JSON。
+- 收紧 Agent Secret 传输协议：宿主没有安全 stdin / hidden process-input 通道时，不再允许创建临时 Key 文件、临时脚本或把 Secret 序列化进 shell 命令。
+- 无安全 Secret 通道时，Agent 应让用户在本机运行 `configure.py set --pretty`，由 `getpass` 隐藏读取 Key。
+
+### Verification
+
+- 新增 cp936 输出回归，覆盖 vision / doctor / configure 三个 CLI。
+- 新增无安全 stdin 时的 Secret transport 契约测试。
+- 完整测试：88 tests passed。
+- `python -m compileall -q free_vision scripts` 通过。
+- `bash -n scripts/vision.sh` 通过。
+- `git diff --check` 通过。
+
 ## v0.3.3 — 2026-08-13
 
 ### Fixed
