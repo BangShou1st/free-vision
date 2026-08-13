@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from typing import Callable, Sequence, TextIO
 
 from .doctor import run_doctor
+from .output import write_json
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,8 +23,7 @@ def main(
 ) -> int:
     args = build_parser().parse_args(list(argv) if argv is not None else None)
     report = doctor(refresh_models=args.refresh_models)
-    json.dump(report, stdout, ensure_ascii=False, indent=2 if args.pretty else None)
-    stdout.write("\n")
+    write_json(stdout, report, pretty=args.pretty)
     return 0 if report.get("ok") else 1
 
 
