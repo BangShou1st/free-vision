@@ -17,7 +17,8 @@ PREFERRED_MODEL_IDS = ("mimo-v2.5-free",)
 
 
 def cache_path() -> Path:
-    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    configured = os.environ.get("XDG_CACHE_HOME")
+    base = Path(configured) if configured else Path.home() / ".cache"
     return base / "free-vision" / "models.json"
 
 
