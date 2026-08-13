@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.3.3 — 2026-08-13
+
+### Fixed
+
+- 修复 Agent 宿主通过 PTY / process-input 配置 API Key 时可能发生终端回显的问题：`configure.py set --stdin` 检测到 TTY 后会自动改用隐藏输入。
+- `SKILL.md` 现在明确区分非 TTY stdin pipe 与 PTY：真正的 pipe 使用 `--stdin`；PTY 使用 `configure.py set --pretty`，由 `getpass` 隐藏输入。
+- 首次/换 Key 的候选验证不再复用完整多模型长时间 fallback：只探测首选免费视觉模型，并把该次 setup probe 的推理 timeout 限制为 45 秒。
+- 普通 `vision.py` 分析和正常 doctor 默认行为保持原有 120 秒请求 timeout 与模型 fallback，不受 setup 限制影响。
+
+### Verification
+
+- 新增 PTY 隐藏输入、候选数量边界、setup probe timeout 传递和 Agent secret-input 契约测试。
+- 完整测试：83 tests passed。
+- `python -m compileall -q free_vision scripts` 通过。
+- `bash -n scripts/vision.sh` 通过。
+- `git diff --check` 通过。
+
 ## v0.3.2 — 2026-08-13
 
 ### Fixed
@@ -52,4 +69,4 @@
 - 动态发现当前可用的 OpenCode Zen 免费视觉模型，并进行自动 fallback。
 - 支持对话式 API Key 配置、替换、状态检查、doctor、repair 和 clear 生命周期。
 - 新 Key 在真实视觉验证成功后才保存；替换失败时保留旧 Key。
-- Agent 最终回复跟随用户当前对话语言。
+- Agent 最终回复跟随用户当前对话语言.
