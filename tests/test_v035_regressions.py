@@ -152,6 +152,16 @@ class AgentStabilityContractTests(unittest.TestCase):
         self.assertIn("python -c", text)
         self.assertIn("Playwright", text)
 
+    def test_references_match_selftest_and_secret_transport_contract(self):
+        usage = (ROOT / "references" / "usage.md").read_text(encoding="utf-8").lower()
+        troubleshooting = (ROOT / "references" / "troubleshooting.md").read_text(encoding="utf-8").lower()
+        for text in (usage, troubleshooting):
+            self.assertIn("scripts/selftest.py --pretty", text)
+            self.assertIn("secure", text)
+            self.assertIn("configure.py set --pretty", text)
+        self.assertIn("python -c", usage)
+        self.assertIn("python -c", troubleshooting)
+
 
 if __name__ == "__main__":
     unittest.main()
