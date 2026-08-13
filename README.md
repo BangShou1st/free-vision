@@ -56,19 +56,35 @@ Free Vision 需要一个 OpenCode API Key。
 
 如果本机已经有有效配置，Agent 应直接运行诊断，不重复索要 Key。
 
-如果没有配置，Agent 会说明 Key 会进入当前对话上下文，然后要求你在**下一条消息单独发送 Key**。收到后，它会通过 stdin 调用：
+如果没有配置，Agent 会先检查宿主是否有安全的 stdin / process-input 通道。只有在能安全把 Secret 交给本地配置进程时，才应该让你在对话里发送 Key。
+
+安全的非 TTY stdin 模式：
 
 ```text
 python <SKILL_DIR>/scripts/configure.py set --stdin --pretty
 ```
 
+PTY / 交互式宿主应使用隐藏输入：
+
+```text
+python <SKILL_DIR>/scripts/configure.py set --pretty
+```
+
 配置流程会先进行真实视觉验证，验证成功后才保存 Key。Key 不会作为命令行参数传递，也不会出现在 Free Vision 的 JSON 输出中。
 
-如果你不想把 Key 发进聊天上下文，也可以在终端运行：
+### 没有安全 stdin 时怎么办？
+
+如果宿主 Agent 没有安全的 stdin / hidden process-input 通道，**不要让用户把 Key 发进聊天后再想办法转运**，也**不要创建临时 Key 文件、临时 Python / PowerShell / Bash 脚本**。
+
+这类宿主应直接让用户在本机终端运行：
 
 ```bash
-python scripts/configure.py set
+python <SKILL_DIR>/scripts/configure.py set --pretty
 ```
+
+该命令通过 `getpass` 隐藏读取 Key，不放进 argv，也不需要把 Secret 写入临时文件、脚本或 shell 命令。配置完成后，Agent 再继续运行 doctor 和视觉测试。
+
+如果你本来就不想把 Key 发进聊天上下文，也可以始终使用这个本地隐藏输入方式。
 
 ---
 
@@ -372,7 +388,8 @@ python scripts/vision.py before.png after.png --task "比较两张图片所有�
 ## 🔐 安全说明
 
 - API Key 不会出现在 Free Vision 的结果 JSON 中。
-- Agent 配置 Key 时应通过 stdin 传入，不放进命令行参数。
+- Agent 配置 Key 时只能使用安全 stdin / hidden process-input；没有安全 Secret 通道时应改为用户本地 `configure.py set --pretty`。
+- 不允许为了自动化配置创建临时 Key 文件、临时脚本或把 Secret 放进 shell 命令。
 - 更换 Key 时，新 Key 验证成功后才替换旧 Key。
 - 远程图片只接受 `http://` 和 `https://`。
 - 默认单张图片大小限制 20 MiB。
@@ -401,3 +418,5 @@ bash -n scripts/vision.sh
 Image presence is enough to activate the Skill when the host/model cannot already inspect the image directly; explicit “analyze image” keywords are not required. If native vision is already available for that image, Free Vision should be skipped.
 
 Recommended install flow: use the host's native Skill installer when available; otherwise clone/download the repository temporarily and run `python scripts/install.py --dest <SKILL_ROOT> --force`. Do not copy the full development repository into the final Skill directory, and do not patch installed Free Vision source during normal setup or repair.
+
+For secrets, only ask for a key in chat when the host has a secure stdin or hidden process-input channel. If it does not, instruct the user to run `configure.py set --pretty` locally; do not create temporary secret files or scripts.

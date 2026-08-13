@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from dataclasses import asdict
 from typing import Callable, Sequence, TextIO
 
 from .discovery import discover_candidates
+from .output import write_json
 from .service import analyze
 from .types import VisionError
 
@@ -30,11 +30,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--refresh-models", action="store_true", help="Bypass the six-hour discovery cache")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     return parser
-
-
-def _write_json(stdout: TextIO, payload: dict, *, pretty: bool = False) -> None:
-    json.dump(payload, stdout, ensure_ascii=False, indent=2 if pretty else None)
-    stdout.write("\n")
 
 
 def main(
@@ -64,7 +59,7 @@ def main(
                     for item in candidates
                 ],
             }
-            _write_json(stdout, payload, pretty=pretty)
+            write_json(stdout, payload, pretty=pretty)
             return 0
 
         if not args.images:
@@ -76,8 +71,8 @@ def main(
             model=args.model,
             refresh_models=args.refresh_models,
         )
-        _write_json(stdout, result.to_dict(), pretty=pretty)
+        write_json(stdout, result.to_dict(), pretty=pretty)
         return 0
     except VisionError as exc:
-        _write_json(stdout, {"ok": False, "error": exc.to_dict()}, pretty=pretty)
+        write_json(stdout, {"ok": False, "error": exc.to_dict()}, pretty=pretty)
         return 2 if exc.code == "usage_error" else 1

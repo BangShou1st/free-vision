@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import json
+import os
+import stat
 import sys
 from pathlib import Path
 from typing import Callable, Sequence, TextIO
 
 from .config import clear_saved_api_key, inspect_config, save_api_key
 from .doctor import run_doctor
+from .output import write_json
 from .types import ConfigStatus, VisionError
 
 
-def _write_json(stdout: TextIO, payload: dict, *, pretty: bool = False) -> None:
-    json.dump(payload, stdout, ensure_ascii=False, indent=2 if pretty else None)
-    stdout.write("\n")
+def _stdin_is_regular_file(stdin: TextIO) -> bool:
+    try:
+        return stat.S_ISREG(os.fstat(stdin.fileno()).st_mode)
+    except (AttributeError, OSError, ValueError):
+        return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,7 +65,7 @@ def main(
 
     try:
         if args.command == "status":
-            _write_json(stdout, _status_payload(inspector()), pretty=pretty)
+            write_json(stdout, _status_payload(inspector()), pretty=pretty)
             return 0
 
         if args.command == "clear":
@@ -71,7 +75,7 @@ def main(
             payload = _status_payload(after)
             payload["action"] = "clear"
             payload["removed_local_key"] = removed
-            _write_json(stdout, payload, pretty=pretty)
+            write_json(stdout, payload, pretty=pretty)
             return 0
 
         current = inspector()
@@ -88,10 +92,15 @@ def main(
                     "active_source": current.active_source,
                 },
             }
-            _write_json(stdout, payload, pretty=pretty)
+            write_json(stdout, payload, pretty=pretty)
             return 1
 
         stdin_is_tty = bool(getattr(stdin, "isatty", lambda: False)())
+        if args.stdin and not stdin_is_tty and _stdin_is_regular_file(stdin):
+            raise VisionError(
+                "unsafe_secret_transport",
+                "Refusing to read an API key from a regular file. Use a secure pipe/process-input channel or run configure.py set interactively.",
+            )
         key = (
             hidden_input("OpenCode API key (input hidden): ")
             if (not args.stdin or stdin_is_tty)
@@ -114,7 +123,7 @@ def main(
                 "error": report.get("error", {"code": "validation_failed", "message": "Candidate key validation failed."}),
                 "doctor": report,
             }
-            _write_json(stdout, payload, pretty=pretty)
+            write_json(stdout, payload, pretty=pretty)
             return 1
 
         path = saver(key)
@@ -128,10 +137,10 @@ def main(
             "config_path": str(path),
             "doctor": final_report,
         }
-        _write_json(stdout, payload, pretty=pretty)
+        write_json(stdout, payload, pretty=pretty)
         return 0
     except VisionError as exc:
-        _write_json(stdout, {"ok": False, "saved": False, "error": exc.to_dict()}, pretty=pretty)
+        write_json(stdout, {"ok": False, "saved": False, "error": exc.to_dict()}, pretty=pretty)
         return 1
 
 
