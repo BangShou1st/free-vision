@@ -16,7 +16,7 @@ class OpenCodeProvider:
         self._post_json = post_json
         self._user_agent = os.getenv("ZEN_USER_AGENT", DEFAULT_ZEN_USER_AGENT)
 
-    def analyze(self, model: str, media: list[MediaInput], task: str) -> str:
+    def analyze(self, model: str, media: list[MediaInput], task: str, *, timeout: int = 120) -> str:
         content: list[dict[str, Any]] = [{"type": "text", "text": task}]
         for item in media:
             content.append({"type": "image_url", "image_url": {"url": item.data_uri}})
@@ -33,7 +33,7 @@ class OpenCodeProvider:
                 "Authorization": f"Bearer {self._api_key}",
                 "User-Agent": self._user_agent,
             },
-            timeout=120,
+            timeout=timeout,
         )
         return self._extract_text(response)
 
