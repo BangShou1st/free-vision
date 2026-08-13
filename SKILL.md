@@ -96,7 +96,16 @@ If doctor exposes what appears to be a Free Vision implementation/compatibility 
 
 ### Asking for an API key in conversation
 
-When setup or change-key requires a key:
+Before asking the user to paste a key into chat, first determine whether the host has a secure secret-to-process path.
+
+- If the host has a secure non-TTY stdin pipe or a hidden PTY/process-input channel, conversational setup is allowed.
+- If the host has **no secure stdin or hidden process-input channel**, **do not ask the user to paste the key into chat** for automated setup. Tell the user to run the local hidden prompt instead:
+
+```text
+python <SKILL_DIR>/scripts/configure.py set --pretty
+```
+
+When conversational setup is supported:
 
 1. Tell the user that sending the key means it will enter the **current conversation context**.
 2. Ask them to send the API key in the **next message by itself**.
@@ -125,6 +134,8 @@ python <SKILL_DIR>/scripts/configure.py set --pretty
 Then feed the key through the host's process-input mechanism. The hidden prompt uses `getpass` so the secret is not echoed. **Do not use an echoing PTY** to feed a key with raw `stdin.readline()` semantics.
 
 Do not build shell commands like `echo KEY | ...`, and do not put the key in process arguments.
+
+If the host has **no secure stdin** / process-input path, do not invent a transport. **Do not create a temporary file** containing the key, **do not create a temporary script** containing the key, and do not serialize the key into shell commands, environment-assignment commands, logs, or tool-visible source code. If the key was already pasted before discovering the limitation, do not copy it into another transport; explain that automated secret transport is unavailable and ask the user to complete the hidden local prompt.
 
 The configuration command validates the candidate with a real multimodal request **before** saving it. Candidate setup validation is intentionally bounded to the first preferred free vision model with a 45-second inference timeout; normal Free Vision image analysis keeps its regular model fallback and timeout behavior.
 
@@ -160,9 +171,9 @@ After installing Free Vision from GitHub or another source:
 
 1. Run `doctor.py --pretty`.
 2. If already healthy, tell the user it is ready; do not ask for another key.
-3. If `missing_api_key`, explain the conversation-context caveat and ask for the key in the next message.
-4. Receive the key only in the pending state.
-5. Use the secret-input rules above: `configure.py set --stdin --pretty` only with a non-TTY pipe; with a PTY use `configure.py set --pretty` so input stays hidden.
+3. If `missing_api_key`, first inspect whether the host has a secure secret-input channel.
+4. If the host has secure input, explain the conversation-context caveat, ask for the key in the next message, then use the secret-input rules above.
+5. If the host has no secure input, do not ask for the key in chat; tell the user to run `configure.py set --pretty` locally and continue after it succeeds.
 6. Report READY or the exact failure category in natural language and in the user's current conversation language.
 
 Do not modify Free Vision source code as part of this first-run flow.
