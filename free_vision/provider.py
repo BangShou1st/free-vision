@@ -1,17 +1,20 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Callable
 
 from .http import post_json
 from .types import MediaInput, VisionError
 
 CHAT_COMPLETIONS_URL = "https://opencode.ai/zen/v1/chat/completions"
+DEFAULT_ZEN_USER_AGENT = "opencode/1.18.16"
 
 
 class OpenCodeProvider:
     def __init__(self, api_key: str, *, post_json: Callable[..., Any] = post_json):
         self._api_key = api_key
         self._post_json = post_json
+        self._user_agent = os.getenv("ZEN_USER_AGENT", DEFAULT_ZEN_USER_AGENT)
 
     def analyze(self, model: str, media: list[MediaInput], task: str) -> str:
         content: list[dict[str, Any]] = [{"type": "text", "text": task}]
@@ -26,7 +29,10 @@ class OpenCodeProvider:
         response = self._post_json(
             CHAT_COMPLETIONS_URL,
             payload,
-            headers={"Authorization": f"Bearer {self._api_key}"},
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "User-Agent": self._user_agent,
+            },
             timeout=120,
         )
         return self._extract_text(response)
