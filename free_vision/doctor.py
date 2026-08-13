@@ -43,6 +43,8 @@ def run_doctor(
     config_loader: Callable[[], tuple[Config, str]] = load_config_with_source,
     discovery: Callable[..., list[ModelCandidate]] = discover_candidates,
     provider_factory: Callable[[str], OpenCodeProvider] = OpenCodeProvider,
+    max_candidates: int | None = None,
+    probe_timeout: int | None = None,
 ) -> dict:
     report = _base_report()
 
@@ -75,10 +77,14 @@ def run_doctor(
     provider = provider_factory(key)
     media = [MediaInput("<free-vision-doctor>", "image/png", _PROBE_PNG)]
     attempts: list[Attempt] = []
+    probe_candidates = candidates if max_candidates is None else candidates[:max_candidates]
 
-    for candidate in candidates:
+    for candidate in probe_candidates:
         try:
-            provider.analyze(candidate.model_id, media, _PROBE_TASK)
+            if probe_timeout is None:
+                provider.analyze(candidate.model_id, media, _PROBE_TASK)
+            else:
+                provider.analyze(candidate.model_id, media, _PROBE_TASK, timeout=probe_timeout)
         except VisionError as exc:
             attempts.append(
                 Attempt(
