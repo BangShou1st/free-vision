@@ -1,6 +1,8 @@
 import io
 import json
+import os
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 
 from free_vision.types import MediaInput, VisionError
@@ -43,6 +45,58 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(content[1]["type"], "image_url")
         self.assertTrue(content[1]["image_url"]["url"].startswith("data:image/png;base64,"))
         self.assertEqual(headers["Authorization"], "Bearer secret")
+
+    def test_zen_provider_uses_opencode_user_agent_by_default(self):
+        from free_vision.http import post_json
+        from free_vision.provider import OpenCodeProvider
+
+        seen = {}
+
+        def opener(request, timeout):
+            seen["url"] = request.full_url
+            seen["user_agent"] = request.get_header("User-agent")
+            seen["authorization"] = request.get_header("Authorization")
+            return FakeHttpResponse({"choices": [{"message": {"content": "ok"}}]})
+
+        def zen_post_json(url, payload, *, headers, timeout):
+            return post_json(url, payload, headers=headers, timeout=timeout, opener=opener)
+
+        with patch.dict(os.environ, {}, clear=True):
+            provider = OpenCodeProvider("secret", post_json=zen_post_json)
+            provider.analyze("mimo-v2.5-free", [MediaInput("x", "image/png", b"x")], "task")
+
+        self.assertTrue(seen["url"].endswith("/chat/completions"))
+        self.assertEqual(seen["user_agent"], "opencode/1.18.16")
+        self.assertEqual(seen["authorization"], "Bearer secret")
+
+    def test_zen_provider_user_agent_can_be_overridden_by_environment(self):
+        from free_vision.provider import OpenCodeProvider
+
+        calls = []
+
+        def post_json(url, payload, *, headers, timeout):
+            calls.append((url, payload, headers, timeout))
+            return {"choices": [{"message": {"content": "ok"}}]}
+
+        with patch.dict(os.environ, {"ZEN_USER_AGENT": "opencode/0.0.0"}):
+            provider = OpenCodeProvider("secret", post_json=post_json)
+            provider.analyze("mimo-v2.5-free", [MediaInput("x", "image/png", b"x")], "task")
+
+        self.assertEqual(calls[0][2]["User-Agent"], "opencode/0.0.0")
+
+    def test_generic_post_json_keeps_free_vision_user_agent(self):
+        from free_vision.http import post_json
+
+        seen = {}
+
+        def opener(request, timeout):
+            seen["user_agent"] = request.get_header("User-agent")
+            return FakeHttpResponse({"ok": True})
+
+        post_json("https://example.com/api", {"hello": "world"}, opener=opener)
+
+        self.assertEqual(seen["user_agent"], "free-vision/0.1")
+        self.assertNotEqual(seen["user_agent"], "opencode/1.18.16")
 
     def test_parses_list_content_response(self):
         from free_vision.provider import OpenCodeProvider
