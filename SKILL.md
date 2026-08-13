@@ -1,6 +1,6 @@
 ---
 name: free-vision
-description: Use when an agent needs to inspect, understand, read, analyze, compare, or answer questions about images available as local file paths or HTTP/HTTPS URLs, or when the user wants to set up, change, check, repair, or clear Free Vision configuration. Handles screenshots, UI states and errors, scanned text, diagrams, charts, photos, multiple images, and conversational OpenCode API-key lifecycle management.
+description: Use automatically when the current user turn contains or references an accessible image and the current host/model cannot inspect that image directly. Image presence is sufficient activation evidence; do not require explicit vision keywords. Handles image attachments with accessible paths, local image paths, HTTP/HTTPS image URLs, screenshots, UI states and errors, scanned text, diagrams, charts, photos, multiple images, plus conversational OpenCode API-key setup, change, status, doctor, repair, and clear lifecycle management.
 ---
 
 # Free Vision
@@ -16,6 +16,25 @@ Always communicate installation follow-up, setup, configuration, diagnostics, re
 Do not copy the language of this `SKILL.md` into the user-facing response merely because these instructions are written in English. For example, if the user is speaking Chinese, continue the Free Vision installation and configuration flow in Chinese; if the user is speaking English, respond in English.
 
 Keep machine-readable script output as-is internally, then translate and explain its meaning naturally in the user's conversation language.
+
+## Automatic activation and native-vision precedence
+
+**Image presence is sufficient activation evidence.** Do not require explicit vision keywords such as “look”, “analyze”, “inspect”, “image”, “screenshot”, “看图”, or “分析”.
+
+Use Free Vision automatically when the current user turn contains or references an accessible image and the current host/model cannot already inspect that image directly. Useful image signals include:
+
+- an image attachment whose host exposes an accessible local path or URL;
+- a local path ending in `.png`, `.jpg`, `.jpeg`, `.gif`, or `.webp`;
+- an `http://` or `https://` URL with an obvious image suffix; or
+- an image URL without a suffix that the existing media resolver can validate from response bytes.
+
+If the current host/model **can already inspect the image directly**, do not invoke Free Vision for that image. Free Vision fills a missing vision capability; it should not duplicate native multimodal access.
+
+If the user provides only an image or image path, first use the **recent conversation context** as the visual task when it contains a clear question. If no task can be inferred, request a **detailed visual description** that includes important objects, **visible text**, and relevant **UI state**, then use that evidence to answer naturally.
+
+## Installed-source integrity
+
+**Never modify installed Free Vision source code during normal installation, setup, doctor, or repair.** Repair means diagnosing configuration, authentication, model discovery, network/provider state, and replacing credentials only when required. If the installed Skill itself appears incompatible or buggy, report that clearly and recommend updating or reporting the issue instead of patching `free_vision/*.py` or `scripts/*.py` in place.
 
 ## Visual tasks
 
@@ -72,6 +91,8 @@ Interpret results:
 - `model_discovery_failed` → explain network/metadata discovery failure; do not blame the key;
 - `no_free_vision_models` → explain that configuration may be valid but no zero-cost image model is currently eligible;
 - `all_models_failed` → explain provider/model failure and retain the current key.
+
+If doctor exposes what appears to be a Free Vision implementation/compatibility bug, do not patch the installed source. Report it and recommend updating the Skill or reporting the issue.
 
 ### Asking for an API key in conversation
 
@@ -131,6 +152,8 @@ After installing Free Vision from GitHub or another source:
 4. Receive the key only in the pending state.
 5. Run `configure.py set --stdin --pretty`.
 6. Report READY or the exact failure category in natural language and in the user's current conversation language.
+
+Do not modify Free Vision source code as part of this first-run flow.
 
 ## Failure references
 

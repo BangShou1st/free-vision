@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.3.2 — 2026-08-13
+
+### Fixed
+
+- 将 doctor 的内置探测图从被 OpenCode Zen 拒绝的 1x1 PNG 替换为已验证可用的 64x48 PNG，保持真实多模态探测流程不变。
+- 修复 `XDG_CONFIG_HOME` / `XDG_CACHE_HOME` 已设置时仍提前求值 `Path.home()` 的问题，提升 Windows 隔离环境和测试稳定性。
+- 收敛 GitHub-first 安装流程：无原生 Skill installer 时优先调用 `scripts/install.py --dest <SKILL_ROOT> --force`，不把整个开发仓库复制进最终 Skill 目录。
+- 明确正常 installation/setup/doctor/repair 不允许宿主 Agent 现场修改已安装 Free Vision 源码。
+
+### Agent behavior
+
+- 图片存在本身即可成为 Free Vision 激活信号，不再要求用户显式说“看图”“分析图片”等关键词。
+- 支持从可访问的图片附件路径、本地图片后缀和 HTTP/HTTPS 图片 URL 自动判断视觉需求。
+- 如果当前主模型/宿主已经可以直接理解该图片，则跳过 Free Vision，避免重复视觉处理。
+- 用户只发送图片或图片路径时，优先使用最近上下文中的问题；无可推断任务时默认生成详细视觉描述并提取重要可见文字/UI 状态。
+
+### Verification
+
+- 完整测试：77 tests passed。
+- `python -m compileall -q free_vision scripts` 通过。
+- `bash -n scripts/vision.sh` 通过。
+- `git diff --check` 通过。
+
 ## v0.3.1 — 2026-08-13
 
 ### Fixed
