@@ -1,0 +1,23 @@
+name: v0.3.5 development checks
+
+on:
+  push:
+    branches:
+      - agent/v0.3.5-stability
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Compile
+        run: python -m compileall -q free_vision scripts
+      - name: Shell syntax
+        run: bash -n scripts/vision.sh
+      - name: Diff check
+        run: git diff --check HEAD^ HEAD
