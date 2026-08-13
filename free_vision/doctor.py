@@ -8,10 +8,11 @@ from .discovery import discover_candidates
 from .provider import OpenCodeProvider
 from .types import Attempt, Config, MediaInput, ModelCandidate, VisionError
 
-# Valid 1x1 PNG. The probe verifies that a real multimodal request is accepted;
+# Valid 64x48 PNG. The probe verifies that a real multimodal request is accepted;
 # it intentionally does not depend on fragile OCR/content assertions.
+# OpenCode Zen rejects the previous 1x1 probe with HTTP 400.
 _PROBE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII="
+    "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAA+0lEQVR4nO2aOw6DMBBEh5GvlRtQu0mbY6VN45obpMkhcpekoEkIEop3AY/NaxC/1QxjVpahezxfUIYQJ4ybvj9DjWG41ZAAUccQmuRSMv33aJdPgBCHEIeo7CX2Il5PvwfT5Y7yDcQ56Z+nfG2EbaSvZ4Mbq8++fl0DeWpcPDgYsOiIZg/ybZTG++2PMNoqtJ1AdOok0VCn7QRKgBCHEIcQh2jZQHKaUSZDnbYTgEcIyVah+QRge4TJHKBPAnk6XHqA2xD6V41XBwvwY9S0OLUsd1Vi0YbGutB6Wmc52ujeEOIQ4hDiEOIQ4oTJvtwXb0IcQpzu+FsF+/IGSXBBe9ql5WMAAAAASUVORK5CYII="
 )
 _PROBE_TASK = "Inspect the attached image, then reply with the single token VISION_OK."
 
