@@ -64,7 +64,7 @@ def _runtime_roots(source_root: Path) -> Iterable[Path]:
     yield source_root / "free_vision"
     yield source_root / "references"
     yield source_root / "agents" / "openai.yaml"
-    for name in ("vision.py", "vision.sh", "onboard.py", "configure.py", "doctor.py"):
+    for name in ("vision.py", "vision.sh", "onboard.py", "configure.py", "doctor.py", "selftest.py"):
         yield source_root / "scripts" / name
 
 
@@ -94,6 +94,7 @@ def _validate_source(source_root: Path, files: list[Path]) -> None:
         "scripts/onboard.py",
         "scripts/configure.py",
         "scripts/doctor.py",
+        "scripts/selftest.py",
         "free_vision/__init__.py",
     }
     rel = {path.relative_to(source_root).as_posix() for path in files}
