@@ -91,11 +91,22 @@ def main(
             _write_json(stdout, payload, pretty=pretty)
             return 1
 
-        key = (stdin.readline() if args.stdin else hidden_input("OpenCode API key (input hidden): ")).strip()
+        stdin_is_tty = bool(getattr(stdin, "isatty", lambda: False)())
+        key = (
+            hidden_input("OpenCode API key (input hidden): ")
+            if (not args.stdin or stdin_is_tty)
+            else stdin.readline()
+        ).strip()
         if not key:
             raise VisionError("invalid_api_key", "API key cannot be empty.")
 
-        report = validator(api_key=key, source="candidate", refresh_models=args.refresh_models)
+        report = validator(
+            api_key=key,
+            source="candidate",
+            refresh_models=args.refresh_models,
+            max_candidates=1,
+            probe_timeout=45,
+        )
         if not report.get("ok"):
             payload = {
                 "ok": False,
