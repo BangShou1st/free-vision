@@ -67,6 +67,32 @@ class WindowsJsonOutputTests(unittest.TestCase):
         self.assertEqual(payload["config_path"], status.config_path)
 
 
+class ConfigureSecretTransportTests(unittest.TestCase):
+    def test_configure_rejects_regular_file_stdin_for_api_key(self):
+        from free_vision.configure import main
+
+        import tempfile
+
+        called = []
+        with tempfile.NamedTemporaryFile("w+", encoding="utf-8") as secret_file:
+            secret_file.write("secret-value\n")
+            secret_file.flush()
+            secret_file.seek(0)
+            out = io.StringIO()
+            rc = main(
+                ["set", "--stdin"],
+                stdin=secret_file,
+                stdout=out,
+                inspector=lambda: type("S", (), {"has_environment_key": False})(),
+                validator=lambda **kwargs: called.append(kwargs),
+            )
+
+        payload = json.loads(out.getvalue())
+        self.assertEqual(rc, 1)
+        self.assertEqual(payload["error"]["code"], "unsafe_secret_transport")
+        self.assertEqual(called, [])
+
+
 class SecretTransportContractTests(unittest.TestCase):
     def test_skill_forbids_temp_secret_files_and_scripts_when_host_lacks_safe_stdin(self):
         text = Path("SKILL.md").read_text(encoding="utf-8").lower()
