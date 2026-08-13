@@ -108,15 +108,27 @@ Outside a pending configuration state, do not interpret arbitrary credential-loo
 
 ### Save or change a key
 
-After receiving the pending key, start the bundled configuration process and pass the key through **stdin**, not as a command-line argument:
+After receiving the pending key, never put it in command-line arguments. Choose the secret-input mode based on the host:
+
+- If the host can provide a real **non-TTY stdin pipe** in one process invocation, use:
 
 ```text
 python <SKILL_DIR>/scripts/configure.py set --stdin --pretty
 ```
 
-Provide the key to that running process through stdin using the Agent host's process-input mechanism. Do not build shell commands like `echo KEY | ...`, and do not put the key in process arguments.
+- If the host only supports a **PTY / interactive process-input channel**, use the hidden-input mode instead:
 
-The configuration command validates the candidate with a real multimodal request **before** saving it. During change-key, the old key stays untouched until the new key passes validation.
+```text
+python <SKILL_DIR>/scripts/configure.py set --pretty
+```
+
+Then feed the key through the host's process-input mechanism. The hidden prompt uses `getpass` so the secret is not echoed. **Do not use an echoing PTY** to feed a key with raw `stdin.readline()` semantics.
+
+Do not build shell commands like `echo KEY | ...`, and do not put the key in process arguments.
+
+The configuration command validates the candidate with a real multimodal request **before** saving it. Candidate setup validation is intentionally bounded to the first preferred free vision model with a 45-second inference timeout; normal Free Vision image analysis keeps its regular model fallback and timeout behavior.
+
+During change-key, the old key stays untouched until the new key passes validation.
 
 After success, tell the user that configuration, free-model discovery, authentication, and vision testing succeeded, and include the tested model id. Do not echo the key.
 
@@ -150,7 +162,7 @@ After installing Free Vision from GitHub or another source:
 2. If already healthy, tell the user it is ready; do not ask for another key.
 3. If `missing_api_key`, explain the conversation-context caveat and ask for the key in the next message.
 4. Receive the key only in the pending state.
-5. Run `configure.py set --stdin --pretty`.
+5. Use the secret-input rules above: `configure.py set --stdin --pretty` only with a non-TTY pipe; with a PTY use `configure.py set --pretty` so input stays hidden.
 6. Report READY or the exact failure category in natural language and in the user's current conversation language.
 
 Do not modify Free Vision source code as part of this first-run flow.
