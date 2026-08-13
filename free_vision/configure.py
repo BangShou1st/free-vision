@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
+import stat
 import sys
 from pathlib import Path
 from typing import Callable, Sequence, TextIO
@@ -10,6 +12,13 @@ from .config import clear_saved_api_key, inspect_config, save_api_key
 from .doctor import run_doctor
 from .output import write_json
 from .types import ConfigStatus, VisionError
+
+
+def _stdin_is_regular_file(stdin: TextIO) -> bool:
+    try:
+        return stat.S_ISREG(os.fstat(stdin.fileno()).st_mode)
+    except (AttributeError, OSError, ValueError):
+        return False
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -87,6 +96,11 @@ def main(
             return 1
 
         stdin_is_tty = bool(getattr(stdin, "isatty", lambda: False)())
+        if args.stdin and not stdin_is_tty and _stdin_is_regular_file(stdin):
+            raise VisionError(
+                "unsafe_secret_transport",
+                "Refusing to read an API key from a regular file. Use a secure pipe/process-input channel or run configure.py set interactively.",
+            )
         key = (
             hidden_input("OpenCode API key (input hidden): ")
             if (not args.stdin or stdin_is_tty)
