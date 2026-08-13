@@ -15,7 +15,7 @@ Always communicate installation follow-up, setup, configuration, diagnostics, re
 
 Do not copy the language of this `SKILL.md` into the user-facing response merely because these instructions are written in English. For example, if the user is speaking Chinese, continue the Free Vision installation and configuration flow in Chinese; if the user is speaking English, respond in English.
 
-Keep machine-readable script output as-is internally, then translate and explain its meaning naturally in the user's conversation language.
+Keep machine-readable script output as-is internally, parse its JSON, then translate and explain its meaning naturally in the user's conversation language. Raw Free Vision JSON is ASCII-safe and may contain standard Unicode escapes; after JSON parsing, semantic strings are the original Unicode text.
 
 ## Automatic activation and native-vision precedence
 
@@ -53,6 +53,16 @@ Use the user's actual visual question as `--task`; do not replace a specific req
 
 On success, read JSON `result` as visual evidence, continue reasoning with the main Agent, and give a natural-language answer. Do not dump raw JSON unless requested.
 
+### Built-in installation self-test
+
+For ordinary installation acceptance, use Free Vision's bundled deterministic image:
+
+```text
+python <SKILL_DIR>/scripts/selftest.py --pretty
+```
+
+This self-test uses the normal Free Vision image-analysis service, configured provider, current free-model discovery, and model fallback. **Do not generate a Playwright/browser screenshot or any temporary image for the normal Free Vision installation self-test.** Only use a user-provided or newly captured real image when the user explicitly wants that additional test.
+
 ## Configuration intents
 
 Treat configuration as a permanent Free Vision capability, not only an installation step. Recognize natural-language intents such as:
@@ -86,8 +96,8 @@ python <SKILL_DIR>/scripts/doctor.py --pretty
 
 Interpret results:
 
-- `missing_api_key` → request a key;
-- `authentication_failed` → request a replacement key;
+- `missing_api_key` → configure a key only after checking for a secure secret-input channel;
+- `authentication_failed` → request a replacement key only if secure input exists, otherwise use local hidden setup;
 - `model_discovery_failed` → explain network/metadata discovery failure; do not blame the key;
 - `no_free_vision_models` → explain that configuration may be valid but no zero-cost image model is currently eligible;
 - `all_models_failed` → explain provider/model failure and retain the current key.
@@ -96,7 +106,9 @@ If doctor exposes what appears to be a Free Vision implementation/compatibility 
 
 ### Asking for an API key in conversation
 
-Before asking the user to paste a key into chat, first determine whether the host has a secure secret-to-process path.
+Before asking the user to paste a key into chat, first determine whether the host has a genuinely secure secret-to-process path.
+
+A secure channel means the host itself can deliver the already-received secret to the target process without serializing the key into shell command text, tool-visible source code, argv, temporary files/scripts, logs, or tool-visible environment assignment commands.
 
 - If the host has a secure non-TTY stdin pipe or a hidden PTY/process-input channel, conversational setup is allowed.
 - If the host has **no secure stdin or hidden process-input channel**, **do not ask the user to paste the key into chat** for automated setup. Tell the user to run the local hidden prompt instead:
@@ -119,23 +131,25 @@ Outside a pending configuration state, do not interpret arbitrary credential-loo
 
 After receiving the pending key, never put it in command-line arguments. Choose the secret-input mode based on the host:
 
-- If the host can provide a real **non-TTY stdin pipe** in one process invocation, use:
+- If the host can provide a real **non-TTY stdin pipe** in one process invocation without embedding the secret in the command/source, use:
 
 ```text
 python <SKILL_DIR>/scripts/configure.py set --stdin --pretty
 ```
 
-- If the host only supports a **PTY / interactive process-input channel**, use the hidden-input mode instead:
+- If the host supports a **hidden PTY / interactive process-input channel**, use:
 
 ```text
 python <SKILL_DIR>/scripts/configure.py set --pretty
 ```
 
-Then feed the key through the host's process-input mechanism. The hidden prompt uses `getpass` so the secret is not echoed. **Do not use an echoing PTY** to feed a key with raw `stdin.readline()` semantics.
+Then feed the key through the host's hidden process-input mechanism. The hidden prompt uses `getpass` so the secret is not echoed. **Do not use an echoing PTY** to feed a key with raw `stdin.readline()` semantics.
 
 Do not build shell commands like `echo KEY | ...`, and do not put the key in process arguments.
 
-If the host has **no secure stdin** / process-input path, do not invent a transport. **Do not create a temporary file** containing the key, **do not create a temporary script** containing the key, and do not serialize the key into shell commands, environment-assignment commands, logs, or tool-visible source code. If the key was already pasted before discovering the limitation, do not copy it into another transport; explain that automated secret transport is unavailable and ask the user to complete the hidden local prompt.
+A child receiving stdin does not automatically make the transport safe. For example, `python -c "key=...; subprocess.run(..., input=key)"` is **not a secure stdin** channel because the key is embedded in shell/tool-visible Python source before the child process receives it. The same rule applies to PowerShell or Bash source strings.
+
+If the host has **no secure stdin** / hidden process-input path, do not invent a transport. **Do not create a temporary file** containing the key, **do not create a temporary script** containing the key, and do not serialize the key into shell commands, environment-assignment commands, logs, or tool-visible source code. If the key was already pasted before discovering the limitation, do not copy it into another transport; explain that automated secret transport is unavailable and ask the user to complete the hidden local prompt.
 
 The configuration command validates the candidate with a real multimodal request **before** saving it. Candidate setup validation is intentionally bounded to the first preferred free vision model with a 45-second inference timeout; normal Free Vision image analysis keeps its regular model fallback and timeout behavior.
 
@@ -170,16 +184,17 @@ This removes only the local Free Vision key. If an environment key remains activ
 After installing Free Vision from GitHub or another source:
 
 1. Run `doctor.py --pretty`.
-2. If already healthy, tell the user it is ready; do not ask for another key.
-3. If `missing_api_key`, first inspect whether the host has a secure secret-input channel.
-4. If the host has secure input, explain the conversation-context caveat, ask for the key in the next message, then use the secret-input rules above.
-5. If the host has no secure input, do not ask for the key in chat; tell the user to run `configure.py set --pretty` locally and continue after it succeeds.
-6. Report READY or the exact failure category in natural language and in the user's current conversation language.
+2. If doctor is already healthy, run `selftest.py --pretty`; report READY only after the bundled self-test succeeds.
+3. If doctor reports `missing_api_key`, first inspect whether the host has a genuinely secure secret-input channel.
+4. If secure input exists, explain the conversation-context caveat, ask for the key in the next message, then use the secret-input rules above.
+5. If secure input does not exist, do not ask for the key in chat; tell the user to run `configure.py set --pretty` locally and continue after it succeeds.
+6. After configuration, run `doctor.py --pretty` and then `selftest.py --pretty`.
+7. Report READY or the exact failure category in natural language and in the user's current conversation language.
 
-Do not modify Free Vision source code as part of this first-run flow.
+Do not create a Playwright/browser test screenshot, temporary image, temporary key file, or temporary secret script as part of this normal first-run flow. Do not modify Free Vision source code as part of first-run or repair.
 
 ## Failure references
 
-For Windows paths, installation checks, discovery/network problems, and detailed command examples, read `references/troubleshooting.md` and `references/usage.md` relative to this Skill directory.
+For Windows paths, installation checks, discovery/network problems, detailed command examples, bundled self-test behavior, and secret-input constraints, read `references/troubleshooting.md` and `references/usage.md` relative to this Skill directory.
 
-Do not call OpenCode or models.dev APIs directly from the Agent. Use the bundled commands so model qualification, media validation, fallback, diagnostic classification, and secret handling stay consistent.
+Do not call OpenCode or models.dev APIs directly from the Agent. Use the bundled commands so model qualification, media validation, fallback, diagnostic classification, JSON output, and secret handling stay consistent.

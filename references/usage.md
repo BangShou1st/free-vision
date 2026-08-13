@@ -66,7 +66,19 @@ Force a fresh discovery lookup:
 python <SKILL_DIR>/scripts/vision.py --list-models --refresh-models --pretty
 ```
 
+## Built-in installation self-test
+
+After installation and configuration, use the bundled deterministic test image:
+
+```text
+python <SKILL_DIR>/scripts/selftest.py --pretty
+```
+
+This is the normal end-to-end acceptance test. Do not create a Playwright/browser screenshot or another temporary image merely to test whether Free Vision works. The bundled self-test uses the normal image-analysis service, current free-model discovery, provider, fallback, and machine JSON output.
+
 ## Consuming JSON
+
+Free Vision's machine-readable CLI output is ASCII-safe JSON. Unicode text is represented with standard JSON escapes when necessary; after `json.loads`, the semantic value is the original Unicode text.
 
 Success fields:
 
@@ -81,7 +93,7 @@ Use `result` as evidence, then answer naturally. Do not expose the full JSON unl
 
 ## Conversational configuration lifecycle
 
-Free Vision configuration is meant to be triggered by natural language, not memorized shell commands.
+Free Vision configuration is meant to be triggered by natural language, but only when the host has a genuinely secure secret-to-process channel.
 
 ### First setup
 
@@ -91,19 +103,42 @@ The Agent runs:
 python <SKILL_DIR>/scripts/doctor.py --pretty
 ```
 
-If the result is `missing_api_key`, it explains that the next key message enters the conversation context, asks the user to send the key alone, and enters `WAITING_FOR_API_KEY`.
+If the result is `missing_api_key`, first determine whether the host can deliver the secret to the child process without serializing the key into command/source text, argv, temporary files/scripts, logs, or tool-visible environment assignments.
 
-After the next message, the Agent starts:
+If a true secure non-TTY pipe exists, conversational setup may use:
 
 ```text
 python <SKILL_DIR>/scripts/configure.py set --stdin --pretty
 ```
 
-and provides the pending key through process stdin. Do not put a key in a command argument or construct `echo KEY | ...`.
+If the host has a hidden PTY/process-input channel, run:
+
+```text
+python <SKILL_DIR>/scripts/configure.py set --pretty
+```
+
+and feed the pending key through that hidden channel.
+
+`python -c "key=...; subprocess.run(..., input=key)"` is **not a secure stdin** workaround. Although the child receives stdin, the key has already been serialized into shell/tool-visible Python source. The same rule applies to PowerShell or Bash source strings.
+
+If the host has no secure hidden channel, do not ask the user to paste a key for automated setup. Ask the user to run locally:
+
+```text
+python <SKILL_DIR>/scripts/configure.py set --pretty
+```
+
+Then continue with:
+
+```text
+python <SKILL_DIR>/scripts/doctor.py --pretty
+python <SKILL_DIR>/scripts/selftest.py --pretty
+```
+
+Do not put a key in a command argument, construct `echo KEY | ...`, write a temporary key file, or create a temporary script containing the key.
 
 ### Change key
 
-For requests like “换一下 Free Vision 的 key”, use the same flow but conceptual state `WAITING_FOR_NEW_API_KEY`. Candidate validation happens before persistence, so a failed candidate does not replace the old local key.
+For requests like “换一下 Free Vision 的 key”, apply the same secure-channel check first. Candidate validation happens before persistence, so a failed candidate does not replace the old local key.
 
 ### Status
 
@@ -123,4 +158,4 @@ If `active_source` still points to `env:...`, tell the user that an environment 
 
 ### Repair
 
-Run doctor first. Request a key only for `missing_api_key` or `authentication_failed`. Keep existing configuration for discovery, no-free-model, network, rate-limit, and other provider failures.
+Run doctor first. Request a key only for `missing_api_key` or `authentication_failed`, and only after confirming a secure secret channel exists. Keep existing configuration for discovery, no-free-model, network, rate-limit, and other provider failures. Do not patch installed Free Vision source during normal repair.

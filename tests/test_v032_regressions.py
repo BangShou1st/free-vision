@@ -22,15 +22,17 @@ class FakeProvider:
 
 class DoctorProbeRegressionTests(unittest.TestCase):
     def test_probe_png_has_normal_dimensions(self):
-        from free_vision.doctor import _PROBE_PNG
+        from free_vision.assets import load_selftest_image
 
-        self.assertEqual(_PROBE_PNG[:8], b"\x89PNG\r\n\x1a\n")
-        width, height = struct.unpack(">II", _PROBE_PNG[16:24])
+        probe = load_selftest_image()
+        self.assertEqual(probe[:8], b"\x89PNG\r\n\x1a\n")
+        width, height = struct.unpack(">II", probe[16:24])
         self.assertGreater(width, 1)
         self.assertGreater(height, 1)
 
     def test_doctor_passes_embedded_probe_bytes_to_provider(self):
-        from free_vision.doctor import _PROBE_PNG, run_doctor
+        from free_vision.assets import load_selftest_image
+        from free_vision.doctor import run_doctor
 
         provider = FakeProvider()
         report = run_doctor(
@@ -43,7 +45,7 @@ class DoctorProbeRegressionTests(unittest.TestCase):
         media = provider.calls[0][1][0]
         self.assertEqual(media.source, "<free-vision-doctor>")
         self.assertEqual(media.mime_type, "image/png")
-        self.assertEqual(media.data, _PROBE_PNG)
+        self.assertEqual(media.data, load_selftest_image())
 
 
 class XdgPathRegressionTests(unittest.TestCase):

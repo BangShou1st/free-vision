@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import base64
 from typing import Callable
 
+from .assets import load_selftest_image
 from .config import load_config_with_source
 from .discovery import discover_candidates
 from .provider import OpenCodeProvider
 from .types import Attempt, Config, MediaInput, ModelCandidate, VisionError
 
-# Valid 64x48 PNG. The probe verifies that a real multimodal request is accepted;
-# it intentionally does not depend on fragile OCR/content assertions.
-# OpenCode Zen rejects the previous 1x1 probe with HTTP 400.
-_PROBE_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAA+0lEQVR4nO2aOw6DMBBEh5GvlRtQu0mbY6VN45obpMkhcpekoEkIEop3AY/NaxC/1QxjVpahezxfUIYQJ4ybvj9DjWG41ZAAUccQmuRSMv33aJdPgBCHEIeo7CX2Il5PvwfT5Y7yDcQ56Z+nfG2EbaSvZ4Mbq8++fl0DeWpcPDgYsOiIZg/ybZTG++2PMNoqtJ1AdOok0VCn7QRKgBCHEIcQh2jZQHKaUSZDnbYTgEcIyVah+QRge4TJHKBPAnk6XHqA2xD6V41XBwvwY9S0OLUsd1Vi0YbGutB6Wmc52ujeEOIQ4hDiEOIQ4oTJvtwXb0IcQpzu+FsF+/IGSXBBe9ql5WMAAAAASUVORK5CYII="
-)
 _PROBE_TASK = "Inspect the attached image, then reply with the single token VISION_OK."
 
 
@@ -75,7 +69,7 @@ def run_doctor(
 
     report["discovery"] = {"status": "ok", "models": len(candidates)}
     provider = provider_factory(key)
-    media = [MediaInput("<free-vision-doctor>", "image/png", _PROBE_PNG)]
+    media = [MediaInput("<free-vision-doctor>", "image/png", load_selftest_image())]
     attempts: list[Attempt] = []
     probe_candidates = candidates if max_candidates is None else candidates[:max_candidates]
 
