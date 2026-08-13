@@ -10,7 +10,8 @@ _ENV_KEYS = ("OPENCODE_API_KEY", "FREE_VISION_OPENCODE_API_KEY")
 
 
 def config_path() -> Path:
-    base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    configured = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(configured) if configured else Path.home() / ".config"
     return base / "free-vision" / "config.json"
 
 
