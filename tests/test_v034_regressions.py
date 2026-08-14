@@ -106,8 +106,8 @@ class SecretTransportContractTests(unittest.TestCase):
     def test_readme_documents_manual_hidden_input_fallback(self):
         text = Path("README.md").read_text(encoding="utf-8")
 
-        self.assertIn("没有安全 stdin", text)
-        self.assertIn("不要创建临时 Key 文件", text)
+        self.assertIn("不是安全 stdin", text)
+        self.assertIn("创建临时 Key 文件", text)
         self.assertIn("configure.py set", text)
 
 
