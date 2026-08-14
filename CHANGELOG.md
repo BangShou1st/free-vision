@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.3.7 — 2026-08-14
+
+### Fixed / Added
+
+- ZCode Console / UUID provider 即使没有可编辑 `baseURL`，也可以在精确识别当前 provider/model 后通过**同 provider id 的可逆 managed overlay**接入 Free Vision gateway，不再要求用户手工改不存在的 Base URL。
+- managed overlay 只写 localhost Base URL 与非 Secret 占位 token `free-vision-local`；真实 OpenCode API Key 继续只保存在 Free Vision 配置中，并由 gateway 仅在转发到 `opencode.ai` 时注入。
+- 当 ZCode 无法从配置/cache 自动推断当前路由时，`setup` 支持使用运行时已经明确暴露的 `--provider-id` 与 `--model` 精确重跑；禁止猜测 routing metadata。
+- credential-free overlay 仅允许已识别且以 `-free` 结尾的 OpenCode model，并拒绝覆盖已经含 credential-like 字段的 provider。
+- Windows 自启从可能需要更高权限的 `schtasks /SC ONLOGON` 改为当前用户 Startup 文件夹；自启注册失败只作为 warning，不再回滚已经成功的 gateway/provider 接入。
+- gateway `/health` 增加 Skill 版本；更新 Skill 后若旧 v0.3.6 gateway 进程仍在运行，`setup/start` 会识别并替换旧进程，`status` 同时暴露 `gateway_version` / `gateway_current`。
+- `remove` 可恢复 managed provider/cache 原始结构、移除 Startup launcher、停止 gateway 并删除受管状态。
+
+### Verification
+
+- 隔离工作区 ZCode 历史 + v0.3.7 专项回归：25 tests passed。
+- 精简公开回归与 v0.3.6 ZCode 公共回归：12 tests passed。
+- `python -m compileall -q free_vision` 通过。
+- 真实 ZCode 拖图仍需在 v0.3.7 发布并更新到用户宿主后做最终验收；本条不宣称宿主级验收已经完成。
+
 ## v0.3.6 — 2026-08-13
 
 ### Added / Fixed
