@@ -60,6 +60,16 @@ def load_gateway_config(*, path: Path | None = None) -> ZCodeGatewayConfig:
         raise ZCodeAdapterError(f"Unable to read ZCode gateway config: {target}") from exc
 
 
+def gateway_launcher_path(skill_dir: Path) -> Path:
+    return Path(skill_dir).resolve() / "scripts" / "zcode_gateway.py"
+
+
+def gateway_runtime_dir(config_path: Path) -> Path:
+    runtime = Path(config_path).resolve().parent
+    runtime.mkdir(parents=True, exist_ok=True)
+    return runtime
+
+
 def gateway_command(
     *,
     skill_dir: Path,
@@ -68,8 +78,7 @@ def gateway_command(
 ) -> list[str]:
     return [
         str(python_executable or sys.executable),
-        "-m",
-        "free_vision.gateway_cli",
+        str(gateway_launcher_path(skill_dir)),
         "--config",
         str(config_path),
     ]
@@ -118,9 +127,10 @@ def install_windows_autostart(
     def quote(value: str) -> str:
         return '"' + value.replace('"', '""') + '"'
 
+    runtime_dir = gateway_runtime_dir(config_path)
     content = (
         "@echo off\r\n"
-        f"cd /d {quote(str(skill_dir))}\r\n"
+        f"cd /d {quote(str(runtime_dir))}\r\n"
         + "start \"\" /b "
         + " ".join(quote(item) for item in command)
         + "\r\n"

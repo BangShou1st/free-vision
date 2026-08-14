@@ -52,7 +52,7 @@ def start_gateway_process(
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
-        "cwd": str(skill_dir),
+        "cwd": str(gateway_runtime_dir(config_path)),
     }
     if os.name == "nt":
         kwargs["creationflags"] = (

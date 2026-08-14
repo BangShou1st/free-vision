@@ -82,7 +82,7 @@ class ReleaseContractTests(unittest.TestCase):
     def test_version_and_reference_contract(self):
         from free_vision import __version__
 
-        self.assertEqual(__version__, "0.3.8")
+        self.assertGreaterEqual(tuple(int(part) for part in __version__.split('.')), (0, 3, 8))
         text = Path("references/zcode.md").read_text(encoding="utf-8").lower()
         for needle in ("existing base url", "upstream", "preserve", "api key", "gateway_current"):
             self.assertIn(needle, text)

@@ -136,7 +136,7 @@ class V037WindowsStartupTests(unittest.TestCase):
                 python_executable='C:/Python/python.exe',
             ))
             text = path.read_text(encoding='utf-8')
-            self.assertIn('free_vision.gateway_cli', text)
+            self.assertIn('zcode_gateway.py', text)
             self.assertNotIn('api', text.lower())
             self.assertTrue(remove_windows_autostart(path=path))
             self.assertFalse(path.exists())

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import shutil
+import signal
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -68,7 +74,16 @@ def _runtime_roots(source_root: Path) -> Iterable[Path]:
     yield source_root / "free_vision"
     yield source_root / "references"
     yield source_root / "agents" / "openai.yaml"
-    for name in ("vision.py", "vision.sh", "onboard.py", "configure.py", "doctor.py", "selftest.py", "zcode.py"):
+    for name in (
+        "vision.py",
+        "vision.sh",
+        "onboard.py",
+        "configure.py",
+        "doctor.py",
+        "selftest.py",
+        "zcode.py",
+        "zcode_gateway.py",
+    ):
         yield source_root / "scripts" / name
 
 
@@ -162,6 +177,74 @@ def install_skill(
         raise InstallError(f"Installation failed: {exc}") from exc
 
 
+def _gateway_state_path() -> Path:
+    root = os.environ.get("XDG_CONFIG_HOME")
+    base = Path(root).expanduser() if root else Path.home() / ".config"
+    return base / "free-vision" / "zcode-gateway.json"
+
+
+def _health_url_from_state(path: Path | None = None) -> str | None:
+    target = _gateway_state_path() if path is None else Path(path)
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8"))
+        host = str(payload.get("host", "127.0.0.1")).strip().lower()
+        port = int(payload.get("port", 8765))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    if host not in {"127.0.0.1", "localhost", "::1"} or not 1 <= port <= 65535:
+        return None
+    url_host = "127.0.0.1" if host == "localhost" else (f"[{host}]" if host == "::1" else host)
+    return f"http://{url_host}:{port}/health"
+
+
+def _read_gateway_health(url: str | None) -> dict | None:
+    if not url:
+        return None
+    try:
+        with urllib.request.urlopen(url, timeout=1.0) as response:
+            if response.status != 200:
+                return None
+            payload = json.loads(response.read().decode("ascii"))
+    except (OSError, ValueError, urllib.error.URLError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _stop_managed_gateway_for_update(*, health: dict | None, kill=os.kill) -> bool:
+    if not isinstance(health, dict) or health.get("service") != "free-vision-zcode-gateway":
+        return False
+    pid = health.get("pid")
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return False
+    except OSError as exc:
+        raise InstallError(
+            "Unable to stop the running Free Vision ZCode gateway before update."
+        ) from exc
+    return True
+
+
+def _prepare_zcode_force_replace(destination: Path) -> bool:
+    destination = Path(destination)
+    if not destination.exists():
+        return False
+    health_url = _health_url_from_state()
+    health = _read_gateway_health(health_url)
+    if not _stop_managed_gateway_for_update(health=health):
+        return False
+    for _ in range(20):
+        current = _read_gateway_health(health_url)
+        if not current or current.get("service") != "free-vision-zcode-gateway":
+            return True
+        time.sleep(0.1)
+    raise InstallError(
+        "Running Free Vision ZCode gateway did not stop before update; installed Skill was not modified."
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="free-vision-install",
@@ -214,6 +297,8 @@ def main(
             project_dir=effective_project,
             dest=args.dest,
         )
+        if args.target == "zcode" and args.force and not args.dry_run and destination.exists():
+            _prepare_zcode_force_replace(destination)
         result = install_skill(
             source_root,
             destination,

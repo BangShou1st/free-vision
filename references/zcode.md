@@ -83,3 +83,11 @@ If a stale Free Vision state file still says the upstream is direct `opencode.ai
 A running gateway is reusable only when both its Skill version and effective upstream match the requested configuration. Changing the upstream therefore replaces the existing process even when `gateway_version` is already current. `gateway_current` checks both version and upstream identity; setup/start use the same identity check before reusing a process.
 
 When the gateway forwards directly to `opencode.ai`, it injects the Free Vision API key from Free Vision's own configuration. When the upstream is an existing non-OpenCode proxy, it preserves the ZCode provider Authorization header so that proxy chain keeps working as configured.
+
+## v0.3.9 runtime / update boundary
+
+The ZCode gateway **runtime cwd** is the Free Vision gateway configuration directory, not the installed Skill directory. The Windows Startup launcher uses the same stable runtime cwd and invokes the installed `scripts/zcode_gateway.py` by absolute path. This keeps `~/.zcode/skills/free-vision` replaceable while the gateway is running.
+
+For a ZCode **force update**, the installer reads Free Vision's saved loopback gateway state, queries its `/health` endpoint, and stops the process only when the response positively identifies `service = free-vision-zcode-gateway` with a valid PID. It never kills a process merely because the gateway port is occupied. After installation, `scripts/zcode.py setup` remains responsible for starting the freshly installed gateway.
+
+An **external upstream** remains externally managed. Free Vision may preserve and proxy through an existing local/enterprise OpenAI-compatible upstream, but it **does not start** that upstream process and **does not stop** or kill it. If the external upstream is unavailable, the gateway reports the normal upstream failure instead of taking ownership of the external process.
