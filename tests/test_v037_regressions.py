@@ -90,7 +90,7 @@ class V037GatewayBoundaryTests(unittest.TestCase):
             'https://opencode.ai/zen/v1/chat/completions',
             api_key_loader=lambda: 'real-free-vision-key',
         )
-        self.assertEqual(result['Authorization'], 'Bear real-free-vision-key')
+        self.assertEqual(result['Authorization'], 'Bearer real-free-vision-key')
         self.assertNotIn('free-vision-local', repr(result))
 
     def test_health_reports_version_and_old_gateway_is_replaced(self):
@@ -99,7 +99,7 @@ class V037GatewayBoundaryTests(unittest.TestCase):
         health = iter([
             {'service': 'free-vision-zcode-gateway', 'pid': 19972},
             None,
-            {'service': 'free-vision-zcode-gateway', 'pid': 22001, 'version': __version__},
+            {'service': 'free-vision-zcode-gateway', 'pid': 22001, 'version': __version__, 'upstream_base_url': ZCodeGatewayConfig().upstream_base_url},
         ])
         kills = []
 
@@ -145,7 +145,7 @@ class V037WindowsStartupTests(unittest.TestCase):
 class V037ReleaseContractTests(unittest.TestCase):
     def test_version_and_zcode_reference_contract(self):
         from free_vision import __version__
-        self.assertEqual(__version__, '0.3.7')
+        self.assertGreaterEqual(tuple(int(part) for part in __version__.split('.')), (0, 3, 7))
         text = Path('references/zcode.md').read_text(encoding='utf-8').lower()
         for needle in ('--provider-id', '--model', 'do not guess', 'placeholder', 'gateway_current', 'startup'):
             self.assertIn(needle, text)

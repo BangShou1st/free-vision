@@ -18,9 +18,11 @@ from .zcode import (
     ZCodeProviderConnection,
     connect_zcode_provider,
     default_zcode_config_path,
+    detect_zcode_provider_upstream,
     detect_zcode_upstream,
     gateway_config_path,
     gateway_health,
+    gateway_matches_config,
     install_windows_autostart,
     load_gateway_config,
     remove_windows_autostart,
@@ -126,10 +128,30 @@ def main(
             else:
                 zcode_path = default_zcode_config_path()
 
+            gateway_probe = ZCodeGatewayConfig(
+                DEFAULT_ZCODE_UPSTREAM,
+                args.host,
+                args.port,
+            )
+            selected_upstream = detect_zcode_provider_upstream(
+                Path(zcode_path),
+                provider_id=args.provider_id,
+                model_id=args.model,
+            )
+            generic_upstream = detect_zcode_upstream(Path(zcode_path))
+
+            def usable_provider_upstream(value: str | None) -> str | None:
+                if not value:
+                    return None
+                normalized = value.strip().rstrip("/").lower()
+                gateway = gateway_probe.gateway_base_url.strip().rstrip("/").lower()
+                return None if normalized == gateway else value
+
             upstream_base_url = (
                 args.upstream_base_url
+                or usable_provider_upstream(selected_upstream)
+                or usable_provider_upstream(generic_upstream)
                 or (existing.upstream_base_url if existing is not None else None)
-                or detect_zcode_upstream(Path(zcode_path))
                 or DEFAULT_ZCODE_UPSTREAM
             )
             config = ZCodeGatewayConfig(
@@ -285,7 +307,10 @@ def main(
                     "running": health is not None,
                     "pid": health.get("pid") if health else None,
                     "gateway_version": health.get("version") if health else None,
-                    "gateway_current": bool(health and health.get("version") == __version__),
+                    "gateway_current": gateway_matches_config(health, config),
+                    "gateway_upstream_base_url": (
+                        health.get("upstream_base_url") if health else None
+                    ),
                     "gateway_base_url": config.gateway_base_url,
                     "upstream_base_url": config.upstream_base_url,
                     "zcode_connected": connected,
