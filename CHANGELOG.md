@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.3.6 — 2026-08-13
+
+### Added / Fixed
+
+- 新增 ZCode 原生安装 target 与本地 loopback adaptive image fallback gateway，解决 ZCode 在文本主模型执行 Skill 前把 `image_url` 直接送给 Provider、导致 `Model only supports text input` 400 的问题。
+- gateway 对未知模型的第一次图片请求仍原样转发，保持原生多模态优先；只有上游明确拒绝图片为 text-only 时才调用 Free Vision、把图片替换为视觉证据文本并自动重试一次。
+- 已明确拒绝图片的模型会在当前 gateway 进程内被记忆，后续同 model 图片请求直接走视觉 fallback，避免重复的必失败 400。
+- `zcode.py setup` 可从 `~/.zcode/v2/config.json` 与 `bots-model-cache.v2.json` 保守识别当前 OpenAI-compatible provider，并同步管理 Base URL；现有 API Key、model、modalities 与其他配置保持不变。
+- `zcode.py remove` 只在配置仍指向受管 gateway 时恢复原 Base URL，不覆盖用户之后的手动修改；setup/config/cache 写入失败会事务回滚。
+- gateway 仅监听 loopback；Windows 支持当前用户登录自启；data URI 同样遵守现有 20 MiB 图片限制。
+- 新增 `references/zcode.md`，并让 ZCode 安装 target 输出 gateway setup/status 的下一步提示。
+
+### Verification
+
+- 开发全量回归：141 tests passed。
+- `python -m compileall -q free_vision scripts`、`bash -n scripts/vision.sh`、`git diff --check` 通过。
+- 本地真实子进程 lifecycle 使用 ZCode UUID provider + `deepseek-v4-flash-free` 形态完成 `setup -> config/cache connect -> gateway proxy -> status -> remove -> restore` 闭环验证。
+- 真实 ZCode 拖图仍需在发布后做最终宿主验收；本条不宣称宿主级测试已经完成。
+
 ## v0.3.5 — 2026-08-13
 
 ### Fixed

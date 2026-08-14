@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Iterable
 
 SKILL_NAME = "free-vision"
-_VALID_TARGETS = {"agents", "opencode", "claude"}
+_VALID_TARGETS = {"agents", "opencode", "claude", "zcode"}
 _VALID_SCOPES = {"user", "project"}
 
 
@@ -50,12 +50,16 @@ def resolve_install_destination(
             return home / ".agents" / "skills" / SKILL_NAME
         if target == "opencode":
             return home / ".config" / "opencode" / "skills" / SKILL_NAME
+        if target == "zcode":
+            return home / ".zcode" / "skills" / SKILL_NAME
         return home / ".claude" / "skills" / SKILL_NAME
 
     if target == "agents":
         return project_dir / ".agents" / "skills" / SKILL_NAME
     if target == "opencode":
         return project_dir / ".opencode" / "skills" / SKILL_NAME
+    if target == "zcode":
+        return project_dir / ".zcode" / "skills" / SKILL_NAME
     return project_dir / ".claude" / "skills" / SKILL_NAME
 
 
@@ -64,7 +68,7 @@ def _runtime_roots(source_root: Path) -> Iterable[Path]:
     yield source_root / "free_vision"
     yield source_root / "references"
     yield source_root / "agents" / "openai.yaml"
-    for name in ("vision.py", "vision.sh", "onboard.py", "configure.py", "doctor.py", "selftest.py"):
+    for name in ("vision.py", "vision.sh", "onboard.py", "configure.py", "doctor.py", "selftest.py", "zcode.py"):
         yield source_root / "scripts" / name
 
 
@@ -165,7 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--target",
-        choices=("agents", "opencode", "claude"),
+        choices=("agents", "opencode", "claude", "zcode"),
         default="agents",
         help="Skill directory convention to use (default: agents)",
     )
@@ -226,4 +230,7 @@ def main(
     if not result.dry_run:
         print("Restart or refresh your Agent client so it can rediscover skills.", file=stdout)
         print("If needed, run the installed scripts/onboard.py to configure the OpenCode API key.", file=stdout)
+        if args.target == "zcode":
+            print("ZCode image fallback: run the installed scripts/zcode.py setup, then scripts/zcode.py status before declaring image fallback READY.", file=stdout)
+            print("See references/zcode.md for setup, status, removal, and fallback behavior.", file=stdout)
     return 0
