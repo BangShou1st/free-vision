@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.3.10 — 2026-08-16
+
+### Fixed / Added
+
+- 多图分析增加 Provider 兼容降级：仍优先把多张图片一次交给视觉模型；若批量多图请求因 `400` / `415` / `422` 被拒绝，则对同一候选模型逐图分析，并用稳定的 `[Image N]` 标签聚合视觉证据交回主 Agent。`429` 和 5xx 不会拆分放大请求。
+- 新增根目录 `source.json`，随运行时 Skill payload 安装，机器可读地记录官方仓库 `https://github.com/BangShou1st/free-vision`、更新分支 `main` 与当前版本。
+- `SKILL.md` 明确规定安装目录是 runtime payload、不是 Git checkout；Agent 更新时必须读取 `source.json` / 官方源说明，禁止搜索或猜测其它同名仓库。
+- README 顶部增加官方仓库 / 唯一更新源说明，并补充已安装 Skill 的标准更新流程。
+- installer 运行时 payload 现在包含 `source.json`，安装/预览输出同时显示 canonical source，便于 Agent 验证更新来源。
+- 版本号升级为 `0.3.10`。
+
+### Verification
+
+- 新增 v0.3.10 canonical-source regression contract，覆盖 metadata、runtime payload、安装复制、installer 输出与 Agent 更新规则。
+- v0.3.9 release contract 改为版本下限检查，避免后续补丁版本误报回归。
+- 真实宿主更新仍应在安装后执行 ZCode `setup` / `status` 并刷新或重启 ZCode；本条不声称已经替用户机器完成宿主级更新。
+
 ## v0.3.7 — 2026-08-14
 
 ### Fixed / Added
@@ -118,7 +135,7 @@
 - 完整测试：68 tests passed。
 - Windows 上使用现有 Zen Key、`mimo-v2.5-free` 和真实本地图片完成回归，原 429 未再出现。
 
-> 这里只记录已验证的客户端兼容性差异，不推断 OpenCode 服务端内部原因。
+> 这里只记录已验证的客户端兼容性差异，不推断 OpenCode 服务端内部为何根据 User-Agent 返回不同结果。
 
 ## v0.3.0 — 2026-08-12
 
