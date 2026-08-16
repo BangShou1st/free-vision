@@ -23,6 +23,22 @@ class FakeProvider:
         return action
 
 
+class BatchRejectingProvider:
+    def __init__(self, *, batch_status=400):
+        self.batch_status = batch_status
+        self.calls = []
+
+    def analyze(self, model, media, task):
+        self.calls.append((model, [item.source for item in media], task))
+        if len(media) > 1:
+            raise VisionError(
+                "provider_request_failed",
+                "provider rejected multi-image batch",
+                status=self.batch_status,
+            )
+        return f"evidence for {media[0].source}"
+
+
 class ServiceTests(unittest.TestCase):
     def test_falls_back_to_second_model(self):
         from free_vision.service import analyze
@@ -88,6 +104,47 @@ class ServiceTests(unittest.TestCase):
                 provider_factory=lambda key: FakeProvider({}),
             )
         self.assertEqual(ctx.exception.code, "model_not_eligible")
+
+    def test_multi_image_batch_rejection_falls_back_to_each_image(self):
+        from free_vision.service import analyze
+
+        provider = BatchRejectingProvider(batch_status=400)
+        result = analyze(
+            ["a.png", "b.png"],
+            "compare the screenshots",
+            config_loader=lambda: type("C", (), {"api_key": "secret"})(),
+            discovery=lambda refresh=False: [CANDIDATES[0]],
+            resolver=lambda source: MediaInput(source, "image/png", b"x"),
+            provider_factory=lambda key: provider,
+        )
+
+        self.assertEqual(
+            [call[1] for call in provider.calls],
+            [["a.png", "b.png"], ["a.png"], ["b.png"]],
+        )
+        self.assertIn("[Image 1]", result.result)
+        self.assertIn("evidence for a.png", result.result)
+        self.assertIn("[Image 2]", result.result)
+        self.assertIn("evidence for b.png", result.result)
+        self.assertEqual(result.attempts[-1].status, "success")
+        self.assertEqual(result.attempts[-1].reason, "multi_image_compat_fallback")
+
+    def test_multi_image_rate_limit_does_not_fan_out_requests(self):
+        from free_vision.service import analyze
+
+        provider = BatchRejectingProvider(batch_status=429)
+        with self.assertRaises(VisionError) as ctx:
+            analyze(
+                ["a.png", "b.png"],
+                "compare the screenshots",
+                config_loader=lambda: type("C", (), {"api_key": "secret"})(),
+                discovery=lambda refresh=False: [CANDIDATES[0]],
+                resolver=lambda source: MediaInput(source, "image/png", b"x"),
+                provider_factory=lambda key: provider,
+            )
+
+        self.assertEqual(ctx.exception.code, "all_models_failed")
+        self.assertEqual([call[1] for call in provider.calls], [["a.png", "b.png"]])
 
 
 if __name__ == "__main__":
