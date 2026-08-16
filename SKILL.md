@@ -9,6 +9,28 @@ Free Vision is a visual evidence tool for Agents. The vision model should **see*
 
 Resolve the **Skill directory** from this `SKILL.md`. Never assume the current working directory is the Skill directory. Keep the user's working directory unchanged so relative image paths keep their original meaning.
 
+## Official source / Update source
+
+The canonical and only official source repository for Free Vision is:
+
+```text
+https://github.com/BangShou1st/free-vision
+```
+
+The canonical update branch is `main`. The installed runtime payload also carries this information in `<SKILL_DIR>/source.json`.
+
+An installed Free Vision Skill directory is **not a Git repository** and is not expected to contain `.git`. When the user asks to update Free Vision:
+
+1. Read `<SKILL_DIR>/source.json` first. If it is unavailable on an older installation, use the canonical repository written in this section.
+2. **Do not search** the web, GitHub, package indexes, or similarly named projects to discover an update source.
+3. **Do not guess** a repository from the Skill name, directory layout, file names, or search results.
+4. Temporarily fetch the canonical repository's `main` branch outside the installed Skill directory.
+5. Use that repository's bundled `scripts/install.py` with `--force` and the correct host target/destination to replace the installed runtime payload. Do not patch installed source files in place.
+6. For ZCode, after replacement run the installed `scripts/zcode.py setup`, then `scripts/zcode.py status`. Treat ZCode image fallback as READY only when `running`, `zcode_connected`, and `gateway_current` are true.
+7. Refresh or restart the Agent host after replacement when needed so it reloads the updated Skill/runtime routing.
+
+If another repository claims to be Free Vision, do not switch sources unless the user explicitly instructs you to use that different repository.
+
 ## Conversation language
 
 Always communicate installation follow-up, setup, configuration, diagnostics, repair guidance, and final visual answers in the user's **current conversation language**, unless the user explicitly asks for another language.

@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Iterable
 
 SKILL_NAME = "free-vision"
+CANONICAL_REPOSITORY = "https://github.com/BangShou1st/free-vision"
+CANONICAL_BRANCH = "main"
 _VALID_TARGETS = {"agents", "opencode", "claude", "zcode"}
 _VALID_SCOPES = {"user", "project"}
 
@@ -70,6 +72,7 @@ def resolve_install_destination(
 
 
 def _runtime_roots(source_root: Path) -> Iterable[Path]:
+    yield source_root / "source.json"
     yield source_root / "SKILL.md"
     yield source_root / "free_vision"
     yield source_root / "references"
@@ -116,6 +119,8 @@ def _validate_source(source_root: Path, files: list[Path]) -> None:
         "scripts/selftest.py",
         "free_vision/__init__.py",
     }
+    if (source_root / "source.json").is_file():
+        required.add("source.json")
     rel = {path.relative_to(source_root).as_posix() for path in files}
     missing = sorted(required - rel)
     if missing:
@@ -311,6 +316,7 @@ def main(
 
     action = "Would install" if result.dry_run else ("Replaced" if result.replaced else "Installed")
     print(f"{action} Free Vision at: {result.destination}", file=stdout)
+    print(f"Source: {CANONICAL_REPOSITORY} ({CANONICAL_BRANCH})", file=stdout)
     print(f"Files: {len(result.files)}", file=stdout)
     if not result.dry_run:
         print("Restart or refresh your Agent client so it can rediscover skills.", file=stdout)

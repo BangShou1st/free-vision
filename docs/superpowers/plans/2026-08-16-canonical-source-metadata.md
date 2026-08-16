@@ -1,0 +1,79 @@
+# Canonical Source Metadata Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Make every installed Free Vision Skill self-identify its canonical GitHub source and update branch, while synchronizing the release version to 0.3.10.
+
+**Architecture:** Keep source discovery declarative. A root `source.json` is copied into the canonical runtime payload; `SKILL.md` gives the same rule to Agents in natural language; installer output surfaces the canonical URL. No network self-updater is added.
+
+**Tech Stack:** Python 3.10+, standard library, unittest, Markdown, JSON.
+
+## Global Constraints
+
+- Canonical repository: `https://github.com/BangShou1st/free-vision`
+- Canonical branch: `main`
+- Release version: `0.3.10`
+- Runtime remains dependency-free.
+- Do not change ZCode routing, secret handling, or gateway lifecycle behavior.
+
+---
+
+### Task 1: Lock canonical-source behavior with tests
+
+**Files:**
+- Create: `tests/test_v0310_regressions.py`
+- Modify: `tests/test_v039_regressions.py`
+
+**Interfaces:**
+- Consumes: `free_vision.install.iter_payload_files`, `free_vision.install.install_skill`, installer `main()` output.
+- Produces: regression contract for `source.json`, canonical URL, version sync, and Agent update instructions.
+
+- [ ] **Step 1: Add tests asserting `source.json` is in the canonical runtime payload and copied by installation.**
+- [ ] **Step 2: Add release-contract tests asserting repository=`https://github.com/BangShou1st/free-vision`, branch=`main`, version=`0.3.10`, and `free_vision.__version__ == 0.3.10`.**
+- [ ] **Step 3: Add documentation contract checking `SKILL.md` contains the canonical URL and explicitly forbids searching/guessing an update source.**
+- [ ] **Step 4: Add CLI-output contract checking installer output contains the canonical repository.**
+- [ ] **Step 5: Verify the canonical-source contract fails against an old-style payload without `source.json`, then passes after implementation.**
+- [ ] **Step 6: Change the v0.3.9 version contract from exact equality to a `(0, 3, 9)` minimum so later patch releases do not create a false regression.**
+
+### Task 2: Add canonical source metadata to the runtime
+
+**Files:**
+- Create: `source.json`
+- Modify: `free_vision/install.py`
+- Modify: `free_vision/__init__.py`
+
+**Interfaces:**
+- Consumes: root source tree and existing runtime payload selection.
+- Produces: installed `<SKILL_DIR>/source.json` with `name`, `repository`, `branch`, `version` when using the canonical repository source.
+
+- [ ] **Step 1: Create `source.json` with exact canonical values.**
+- [ ] **Step 2: Include `source.json` in `_runtime_roots()`. When a source tree carries `source.json`, include it in source validation; keep synthetic/minimal source trees without the metadata installable for backward-compatible test fixtures.**
+- [ ] **Step 3: Add canonical source constant(s) in installer and print `Source: https://github.com/BangShou1st/free-vision (main)` after install/dry-run.**
+- [ ] **Step 4: Bump `free_vision.__version__` to `0.3.10`.**
+- [ ] **Step 5: Run targeted install/release contract verification and confirm green.**
+
+### Task 3: Make update instructions unambiguous
+
+**Files:**
+- Modify: `SKILL.md`
+- Modify: `README.md`
+- Modify: `CHANGELOG.md`
+
+**Interfaces:**
+- Consumes: canonical metadata contract from Task 2.
+- Produces: human and Agent-facing update instructions consistent with `source.json`.
+
+- [ ] **Step 1: Add an `Official source / Update source` section near the top of `SKILL.md`.**
+- [ ] **Step 2: State that installed Skill directories are runtime payloads, not Git repositories; Agents must not search the web or infer another repository when updating.**
+- [ ] **Step 3: Document update flow: fetch canonical `main` → bundled installer `--force` → for ZCode run `setup` then `status` → refresh/restart host.**
+- [ ] **Step 4: Add a prominent official-repository line near the top of `README.md`.**
+- [ ] **Step 5: Add `v0.3.10 — 2026-08-16` changelog entry covering multi-image compatibility fallback and canonical update-source metadata.**
+
+### Task 4: Final verification and integration
+
+**Files:** all changed files.
+
+- [ ] **Step 1: Run the v0.3.10 red/green canonical-source contract in an isolated harness.**
+- [ ] **Step 2: Run full repository tests/compile checks when a complete checkout is available. If the execution environment cannot resolve GitHub and no complete checkout exists, record that limitation explicitly instead of claiming a full-suite result.**
+- [ ] **Step 3: Check the PR diff for source/version consistency, unrelated routing changes, and secret data.**
+- [ ] **Step 4: Open PR to `main`; merge after targeted verification and mergeability checks, while retaining the explicit full-suite limitation in the PR description.**
