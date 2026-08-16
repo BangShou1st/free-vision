@@ -4,7 +4,7 @@
 
 **Goal:** Make every installed Free Vision Skill self-identify its canonical GitHub source and update branch, while synchronizing the release version to 0.3.10.
 
-**Architecture:** Keep source discovery declarative. A root `source.json` is copied into the runtime payload; `SKILL.md` gives the same rule to Agents in natural language; installer output surfaces the canonical URL. No network self-updater is added.
+**Architecture:** Keep source discovery declarative. A root `source.json` is copied into the canonical runtime payload; `SKILL.md` gives the same rule to Agents in natural language; installer output surfaces the canonical URL. No network self-updater is added.
 
 **Tech Stack:** Python 3.10+, standard library, unittest, Markdown, JSON.
 
@@ -21,18 +21,19 @@
 ### Task 1: Lock canonical-source behavior with tests
 
 **Files:**
-- Modify: `tests/test_install.py`
 - Create: `tests/test_v0310_regressions.py`
+- Modify: `tests/test_v039_regressions.py`
 
 **Interfaces:**
 - Consumes: `free_vision.install.iter_payload_files`, `free_vision.install.install_skill`, installer `main()` output.
 - Produces: regression contract for `source.json`, canonical URL, version sync, and Agent update instructions.
 
-- [ ] **Step 1: Add tests asserting `source.json` is in the runtime payload and copied by installation.**
+- [ ] **Step 1: Add tests asserting `source.json` is in the canonical runtime payload and copied by installation.**
 - [ ] **Step 2: Add release-contract tests asserting repository=`https://github.com/BangShou1st/free-vision`, branch=`main`, version=`0.3.10`, and `free_vision.__version__ == 0.3.10`.**
 - [ ] **Step 3: Add documentation contract checking `SKILL.md` contains the canonical URL and explicitly forbids searching/guessing an update source.**
 - [ ] **Step 4: Add CLI-output contract checking installer output contains the canonical repository.**
-- [ ] **Step 5: Verify these tests fail against the current implementation before production changes.**
+- [ ] **Step 5: Verify the canonical-source contract fails against an old-style payload without `source.json`, then passes after implementation.**
+- [ ] **Step 6: Change the v0.3.9 version contract from exact equality to a `(0, 3, 9)` minimum so later patch releases do not create a false regression.**
 
 ### Task 2: Add canonical source metadata to the runtime
 
@@ -43,13 +44,13 @@
 
 **Interfaces:**
 - Consumes: root source tree and existing runtime payload selection.
-- Produces: installed `<SKILL_DIR>/source.json` with `name`, `repository`, `branch`, `version`.
+- Produces: installed `<SKILL_DIR>/source.json` with `name`, `repository`, `branch`, `version` when using the canonical repository source.
 
 - [ ] **Step 1: Create `source.json` with exact canonical values.**
-- [ ] **Step 2: Include `source.json` in `_runtime_roots()` and require it in `_validate_source()`.**
+- [ ] **Step 2: Include `source.json` in `_runtime_roots()`. When a source tree carries `source.json`, include it in source validation; keep synthetic/minimal source trees without the metadata installable for backward-compatible test fixtures.**
 - [ ] **Step 3: Add canonical source constant(s) in installer and print `Source: https://github.com/BangShou1st/free-vision (main)` after install/dry-run.**
 - [ ] **Step 4: Bump `free_vision.__version__` to `0.3.10`.**
-- [ ] **Step 5: Run targeted install/release tests and confirm green.**
+- [ ] **Step 5: Run targeted install/release contract verification and confirm green.**
 
 ### Task 3: Make update instructions unambiguous
 
@@ -72,8 +73,7 @@
 
 **Files:** all changed files.
 
-- [ ] **Step 1: Run `python -m unittest discover -s tests -v`.**
-- [ ] **Step 2: Run `python -m compileall -q free_vision scripts`.**
-- [ ] **Step 3: Run `bash -n scripts/vision.sh` where available.**
-- [ ] **Step 4: Check diff for source/version consistency and no secret data.**
-- [ ] **Step 5: Open PR to `main`; merge only after verification evidence is available.**
+- [ ] **Step 1: Run the v0.3.10 red/green canonical-source contract in an isolated harness.**
+- [ ] **Step 2: Run full repository tests/compile checks when a complete checkout is available. If the execution environment cannot resolve GitHub and no complete checkout exists, record that limitation explicitly instead of claiming a full-suite result.**
+- [ ] **Step 3: Check the PR diff for source/version consistency, unrelated routing changes, and secret data.**
+- [ ] **Step 4: Open PR to `main`; merge after targeted verification and mergeability checks, while retaining the explicit full-suite limitation in the PR description.**
