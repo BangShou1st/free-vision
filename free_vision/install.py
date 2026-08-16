@@ -112,7 +112,6 @@ def _validate_source(source_root: Path, files: list[Path]) -> None:
     if not (source_root / "SKILL.md").is_file():
         raise InstallError(f"Source Skill is missing SKILL.md: {source_root}")
     required = {
-        "source.json",
         "scripts/vision.py",
         "scripts/onboard.py",
         "scripts/configure.py",
@@ -120,6 +119,8 @@ def _validate_source(source_root: Path, files: list[Path]) -> None:
         "scripts/selftest.py",
         "free_vision/__init__.py",
     }
+    if (source_root / "source.json").is_file():
+        required.add("source.json")
     rel = {path.relative_to(source_root).as_posix() for path in files}
     missing = sorted(required - rel)
     if missing:
