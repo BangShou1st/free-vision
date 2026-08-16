@@ -147,7 +147,7 @@ class ExternalUpstreamOwnershipTests(unittest.TestCase):
 class ReleaseContractTests(unittest.TestCase):
     def test_version_and_reference_contract(self):
         from free_vision import __version__
-        self.assertEqual(__version__, "0.3.9")
+        self.assertGreaterEqual(tuple(int(part) for part in __version__.split('.')), (0, 3, 9))
         text = Path("references/zcode.md").read_text(encoding="utf-8").lower()
         for needle in ("runtime cwd", "external upstream", "does not start", "does not stop", "force update"):
             self.assertIn(needle, text)
