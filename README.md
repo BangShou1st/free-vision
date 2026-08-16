@@ -10,6 +10,10 @@ Free Vision 是一个通用 Agent Skill。它动态发现当前可用的 **OpenC
 
 > 🌐 **对话语言跟随用户。** 用户用中文，安装、配置、诊断和最终回答都继续使用中文；其他语言同理。
 
+> 🔗 **官方仓库 / 唯一更新源：** `https://github.com/BangShou1st/free-vision`（`main`）
+>
+> 安装后的 Skill 目录是运行时 payload，**不是 Git 仓库**。更新 Free Vision 时，Agent 应读取随安装包保留的 `source.json` / `SKILL.md` 官方源信息，不要通过网页搜索猜测同名仓库。
+
 ---
 
 ## 🚀 最简单的安装方式
@@ -51,6 +55,26 @@ READY
 **不要把整个开发仓库直接复制到最终 Skill 目录。** `scripts/install.py` 只复制运行时 payload，不把 `tests/`、开发文档和缓存当成运行时依赖。
 
 正常 installation / setup / doctor / repair 中，宿主 Agent **不应该现场修改 Free Vision 源码**。如果判断是 Free Vision 自身兼容问题，应更新版本或报告问题，而不是在用户机器上 patch `free_vision/*.py`。
+
+### 更新已安装的 Skill
+
+已安装目录不是 Git checkout，因此更新时不要在 `<SKILL_DIR>` 里执行 `git pull`，也不要搜索其它同名仓库。固定使用官方仓库 `https://github.com/BangShou1st/free-vision` 的 `main`：
+
+```text
+读取 <SKILL_DIR>/source.json（或 SKILL.md 的 Official source）
+        ↓
+临时获取 https://github.com/BangShou1st/free-vision 的 main
+        ↓
+python scripts/install.py --target <HOST> --force
+        ↓
+如果是 ZCode：运行已安装的 scripts/zcode.py setup
+        ↓
+运行 scripts/zcode.py status
+        ↓
+刷新 / 重启宿主
+```
+
+ZCode 只有在 `status` 中 `running: true`、`zcode_connected: true`、`gateway_current: true` 时，才应把图片 fallback 视为 READY。
 
 ---
 
@@ -349,6 +373,8 @@ bash -n scripts/vision.sh
 ## English
 
 **Free Vision gives text-only AI agents image understanding through currently available zero-cost OpenCode Zen multimodal models.** Image presence is enough to activate it when native vision is unavailable.
+
+Official repository and canonical update source: `https://github.com/BangShou1st/free-vision` (`main`). Installed Skill directories are runtime payloads, not Git checkouts; use installed `source.json` / `SKILL.md` metadata instead of guessing another repository.
 
 Recommended install flow: native Skill installer when appropriate; otherwise use `python scripts/install.py --dest <SKILL_ROOT> --force`. Normal acceptance is `doctor -> configure if needed -> scripts/selftest.py --pretty -> READY`; do not create Playwright/browser or temporary test images.
 
