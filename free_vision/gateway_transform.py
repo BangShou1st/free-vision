@@ -10,6 +10,10 @@ _TOOL_SCREENSHOT_LINE = re.compile(
     r"^\s*(?:browser\s+)?screenshot saved to:\s*(.+?)\s*$",
     re.IGNORECASE | re.MULTILINE,
 )
+_STRUCTURED_CONTENT_LINE = re.compile(
+    r"^\s*structured content:\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 _TOOL_SCREENSHOT_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 
@@ -100,8 +104,11 @@ def _tool_screenshot_paths(
     if not text or "[Free Vision visual evidence]" in text:
         return []
 
+    structured = _STRUCTURED_CONTENT_LINE.search(text)
+    host_metadata = text[: structured.start()] if structured is not None else text
+
     images: list[str] = []
-    for match in _TOOL_SCREENSHOT_LINE.finditer(text):
+    for match in _TOOL_SCREENSHOT_LINE.finditer(host_metadata):
         resolved = _trusted_tool_screenshot_path(
             match.group(1),
             artifact_root=artifact_root,
