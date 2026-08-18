@@ -30,8 +30,27 @@ class GatewayRequestMixin:
         if not isinstance(payload, dict):
             self._json_error(400, "invalid_json", "Request body must be a JSON object.")
             return
+
+        try:
+            payload, tool_screenshot_changed = transform_tool_screenshot_results(
+                payload,
+                analyzer=self._analyzer,
+                cache=self._evidence_cache,
+                artifact_root=self._artifact_root,
+            )
+        except GatewayError as exc:
+            self._json_error(exc.status, exc.code, exc.message)
+            return
+
         if _payload_has_images(payload):
-            self._chat_with_adaptive_fallback(payload, body)
+            original_body = (
+                json.dumps(payload, ensure_ascii=True).encode("utf-8")
+                if tool_screenshot_changed
+                else body
+            )
+            self._chat_with_adaptive_fallback(payload, original_body)
+        elif tool_screenshot_changed:
+            self._proxy(transformed_payload=payload)
         else:
             self._proxy(body)
 
