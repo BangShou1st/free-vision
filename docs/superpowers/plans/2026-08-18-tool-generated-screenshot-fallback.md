@@ -2,65 +2,78 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Teach Free Vision's Agent Skill contract to automatically consume relevant tool-generated screenshots when textual/structured tool output is empty or insufficient, while preserving the user's original task.
+**Goal:** Automatically convert trusted ZCode browser/tool screenshots into visual evidence even when textual/structured tool output is empty, while preserving the user's original task.
 
-**Architecture:** Keep the change declarative in `SKILL.md` and documentation. No host-specific browser parser or daemon is added; the Agent recognizes screenshot paths already exposed in tool results and invokes the existing `scripts/vision.py` path. Version metadata advances to 0.3.11.
+**Architecture:** Add a safety-scoped provider-boundary transformation before normal image-url fallback. The gateway only reads real screenshot files under the current user's ZCode artifact tree from tool-result messages, analyzes them with the existing Free Vision service/cache, and appends evidence before forwarding. `SKILL.md` documents the same behavior for Agent-driven fallbacks. Version metadata advances to 0.3.11.
 
-**Tech Stack:** Markdown, JSON, Python 3.10+ unittest contracts.
+**Tech Stack:** Python 3.10+ standard library, unittest, Markdown, JSON.
 
 ## Global Constraints
 
 - Canonical repository remains `https://github.com/BangShou1st/free-vision` on `main`.
 - Release version becomes `0.3.11`.
-- Preserve native-vision precedence.
-- Preserve the user's original task when calling Free Vision.
-- Do not change ZCode gateway routing, provider behavior, secret handling, installer mechanics, or media resolver behavior.
+- Preserve the user's original task when analyzing a tool screenshot.
+- Automatic gateway reads are restricted to tool-result messages and resolved files under `~/.zcode/cli/artifacts/`.
+- Ordinary user text must never authorize local-file reading.
+- Preserve existing provider routing, secret handling, media limits, installer behavior, and normal image-url fallback.
 
 ---
 
-### Task 1: Lock the Agent behavior with regression contracts
+### Task 1: Lock behavior with regression contracts
 
 **Files:**
 - Create: `tests/test_v0311_regressions.py`
+- Modify: `tests/test_v0310_regressions.py`
 
-**Interfaces:**
-- Consumes: `SKILL.md`, `README.md`, `source.json`, `free_vision.__version__`.
-- Produces: release and behavior contracts for tool-result screenshots.
+- [x] Add Skill/README contracts for current-task tool results, `(no output)`, `Structured content`, original-task preservation, and multi-screenshot ordering.
+- [x] Add gateway tests for trusted artifact transformation and latest preceding user task.
+- [x] Add multi-screenshot ordering test.
+- [x] Add negative tests proving user-role text and paths outside the artifact root do not trigger analysis.
+- [x] Add HTTP integration coverage proving a request with no `image_url` still reaches upstream with appended Free Vision evidence.
+- [x] Make the v0.3.10 source metadata contract forward-compatible so later patch versions do not fail merely because the version advanced.
 
-- [ ] Add a test requiring `SKILL.md` to mention tool results/current task, tool-generated screenshots, `(no output)`, structured content, and screenshot paths.
-- [ ] Add a test requiring the Skill to preserve the user's original task and avoid replacing it with a generic description prompt.
-- [ ] Add a test requiring multiple tool-generated screenshots to be passed together in task order.
-- [ ] Add a release metadata test requiring `0.3.11` in both `source.json` and `free_vision.__version__`.
-- [ ] Run the new test against the pre-change branch state and confirm failure.
+### Task 2: Implement trusted tool-screenshot transformation
 
-### Task 2: Implement the Skill behavior and version bump
+**Files:**
+- Modify: `free_vision/gateway_transform.py`
+- Modify: `free_vision/gateway_handler_request.py`
+- Modify: `free_vision/gateway_handler.py`
+
+- [x] Parse fixed `Browser screenshot saved to:` / `Screenshot saved to:` lines from tool-result messages only.
+- [x] Require absolute, existing, supported image files whose resolved path remains under the configured/default ZCode artifact root.
+- [x] Derive the vision task from the latest preceding user message.
+- [x] Reuse the existing analyzer and evidence cache, then append a `[Free Vision visual evidence]` block to the tool result.
+- [x] Run this transformation before normal image-url adaptive fallback and forward the transformed request even when it contains no `image_url`.
+- [x] Add an optional `artifact_root` injection point to `create_gateway_server()` for deterministic tests while preserving production defaults.
+
+### Task 3: Update Agent behavior and release metadata
 
 **Files:**
 - Modify: `SKILL.md`
 - Modify: `free_vision/__init__.py`
 - Modify: `source.json`
 
-- [ ] Broaden the frontmatter/activation rule from only the current user turn to the current user turn or relevant tool results in the current task.
-- [ ] Add a `Tool-generated screenshot fallback` section describing browser/Playwright/screenshot artifacts, empty or insufficient structured output, accessible screenshot paths, original-task preservation, multi-screenshot handling, and native-vision precedence.
-- [ ] Bump runtime and source metadata to `0.3.11`.
-- [ ] Run targeted regression tests and confirm green.
+- [x] Broaden activation from only user-turn images to relevant current-task tool-result images.
+- [x] Document empty/no-output screenshot fallback, original-task preservation, multiple screenshots, native-vision precedence, and the ZCode local-file safety boundary.
+- [x] Bump runtime and source metadata to `0.3.11`.
 
-### Task 3: Document the behavior for humans
+### Task 4: Document the behavior for humans
 
 **Files:**
 - Modify: `README.md`
 - Modify: `CHANGELOG.md`
+- Modify: `docs/superpowers/specs/2026-08-18-tool-screenshot-fallback-design.md`
 
-- [ ] Add a concise README capability note and example flow for browser `(no output)` plus a saved screenshot path.
-- [ ] Add `v0.3.11 — 2026-08-18` changelog entry describing the new fallback and verification scope.
-- [ ] Keep documentation consistent with the Skill contract and avoid claiming host-level interception that does not exist.
+- [x] Add a README example matching real browser `(no output)` / screenshot / empty `Structured content` output.
+- [x] Document the ZCode artifact safety boundary and original-task behavior.
+- [x] Add `v0.3.11 — 2026-08-18` changelog entry with verification limitations.
+- [x] Align the design document with the provider-boundary implementation.
 
-### Task 4: Final verification and integration
+### Task 5: Final verification and integration
 
 **Files:** all changed files.
 
-- [ ] Run `python -m unittest discover -s tests -v` when a full checkout is available.
-- [ ] Run `python -m compileall -q free_vision scripts`.
-- [ ] Run `bash -n scripts/vision.sh` where available.
-- [ ] Review diff for version consistency and unintended changes.
-- [ ] Open a PR to `main` and merge only after verification evidence is reviewed.
+- [ ] Inspect the final GitHub diff for syntax/interface/version consistency and unintended changes.
+- [ ] Attempt a fresh checkout/full unittest run; if the environment cannot resolve GitHub, record that limitation rather than claiming full test execution.
+- [ ] Confirm the PR head is mergeable and has no unexpected CI/status failures.
+- [ ] Merge to `main` after verification review.
