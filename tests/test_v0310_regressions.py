@@ -7,21 +7,24 @@ from pathlib import Path
 
 CANONICAL_REPOSITORY = "https://github.com/BangShou1st/free-vision"
 CANONICAL_BRANCH = "main"
-RELEASE_VERSION = "0.3.10"
+MIN_RELEASE_VERSION = (0, 3, 10)
 
 
 class CanonicalSourceMetadataTests(unittest.TestCase):
-    def test_source_metadata_matches_release_and_canonical_repository(self):
+    def test_source_metadata_matches_runtime_and_canonical_repository(self):
         from free_vision import __version__
 
         root = Path(__file__).resolve().parents[1]
         metadata = json.loads((root / "source.json").read_text(encoding="utf-8"))
 
-        self.assertEqual(__version__, RELEASE_VERSION)
+        self.assertGreaterEqual(
+            tuple(int(part) for part in __version__.split(".")),
+            MIN_RELEASE_VERSION,
+        )
         self.assertEqual(metadata["name"], "free-vision")
         self.assertEqual(metadata["repository"], CANONICAL_REPOSITORY)
         self.assertEqual(metadata["branch"], CANONICAL_BRANCH)
-        self.assertEqual(metadata["version"], RELEASE_VERSION)
+        self.assertEqual(metadata["version"], __version__)
 
     def test_runtime_payload_contains_source_metadata(self):
         from free_vision.install import iter_payload_files
@@ -34,6 +37,7 @@ class CanonicalSourceMetadataTests(unittest.TestCase):
         self.assertIn("source.json", relative)
 
     def test_installer_copies_source_metadata(self):
+        from free_vision import __version__
         from free_vision.install import install_skill
 
         root = Path(__file__).resolve().parents[1]
@@ -45,7 +49,7 @@ class CanonicalSourceMetadataTests(unittest.TestCase):
             )
             self.assertEqual(installed["repository"], CANONICAL_REPOSITORY)
             self.assertEqual(installed["branch"], CANONICAL_BRANCH)
-            self.assertEqual(installed["version"], RELEASE_VERSION)
+            self.assertEqual(installed["version"], __version__)
 
     def test_installer_output_exposes_canonical_source(self):
         from free_vision.install import main

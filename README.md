@@ -189,6 +189,26 @@ https://example.com/chart.png
 2. 没有可推断问题 → 默认详细描述关键画面、可见文字、对象和 UI 状态；
 3. Free Vision 返回视觉证据后，由主 Agent 继续自然语言回答。
 
+### 浏览器 / 工具截图自动 fallback
+
+v0.3.11 起，图片信号不再只来自用户消息。**当前任务里的工具结果**如果暴露了可访问截图路径，也可以继续走 Free Vision。
+
+例如浏览器工具只返回：
+
+```text
+(no output)
+
+Browser screenshot saved to: C:\Users\me\.zcode\cli\artifacts\sess_xxx\call_xxx\tool-result.png
+
+Structured content:
+```
+
+这里的 `(no output)` 和空 `Structured content` 只表示文本/结构化提取没有拿到有效内容，**不等于页面视觉上没有内容**。只要截图路径可访问，Agent 就应该继续读取截图，而不是停在空输出。
+
+处理时必须保留用户的**原始任务**。例如用户原本问“这个页面为什么登录失败”，视觉任务仍应围绕登录失败、错误提示、按钮和输入框状态展开，而不是退化成泛化的“描述这张图片”。如果一个工具结果产生多张截图，则按产生顺序一起交给现有多图链路。
+
+ZCode gateway 还会在 provider-boundary 自动处理这一类结果：只信任 tool-role 消息中的固定 screenshot-saved 行，并且只允许解析当前用户 `~/.zcode/cli/artifacts/` 目录下的受支持图片，避免网页文本伪造路径去读取任意本地文件。
+
 ---
 
 ## 🧠 工作方式
@@ -198,7 +218,7 @@ https://example.com/chart.png
   ↓
 主 Agent
   ↓
-当前任务包含 / 引用了图片
+当前任务包含 / 引用了图片，或工具结果产生了截图
   ↓
 主模型自己能直接看？
   ├─ 是 → 主模型直接处理
@@ -228,6 +248,7 @@ https://example.com/chart.png
 - ✅ PNG / JPEG / GIF / WebP
 - ✅ 单图 / 多图
 - ✅ 截图、UI、报错、文字提取、图表、照片
+- ✅ 浏览器 / 工具结果保存的截图自动 fallback（ZCode 带受限 artifact 安全边界）
 - ✅ 图片存在即可触发，不依赖关键词
 - ✅ 主模型已有原生视觉时自动跳过
 - ✅ 动态发现当前可用免费视觉模型
@@ -238,7 +259,7 @@ https://example.com/chart.png
 - ✅ Python 3.10+
 - ✅ 运行时无第三方 Python 依赖
 
-目前暂不包含：本地 OCR/视觉模型、OpenRouter、视频/音频、宿主不暴露附件文件时的通用拦截器、模型代理服务。
+目前暂不包含：本地 OCR/视觉模型、OpenRouter、视频/音频、宿主完全不暴露附件/截图路径时的通用拦截器、模型代理服务。
 
 ---
 
@@ -372,7 +393,9 @@ bash -n scripts/vision.sh
 
 ## English
 
-**Free Vision gives text-only AI agents image understanding through currently available zero-cost OpenCode Zen multimodal models.** Image presence is enough to activate it when native vision is unavailable.
+**Free Vision gives text-only AI agents image understanding through currently available zero-cost OpenCode Zen multimodal models.** Image presence in the user turn or a relevant current-task tool result is enough to activate it when native vision is unavailable.
+
+Browser/tool results that contain `(no output)` or empty `Structured content` but expose `Browser screenshot saved to: ...` should continue through visual fallback while preserving the user's original task. In ZCode, the gateway only auto-reads supported screenshot files resolved under the current user's `~/.zcode/cli/artifacts/` tree.
 
 Official repository and canonical update source: `https://github.com/BangShou1st/free-vision` (`main`). Installed Skill directories are runtime payloads, not Git checkouts; use installed `source.json` / `SKILL.md` metadata instead of guessing another repository.
 

@@ -1,6 +1,6 @@
 ---
 name: free-vision
-description: Use automatically when the current user turn contains or references an accessible image and the current host/model cannot inspect that image directly. Image presence is sufficient activation evidence; do not require explicit vision keywords. Handles image attachments with accessible paths, local image paths, HTTP/HTTPS image URLs, screenshots, UI states and errors, scanned text, diagrams, charts, photos, multiple images, plus conversational OpenCode API-key setup, change, status, doctor, repair, and clear lifecycle management.
+description: Use automatically when the current user turn or a relevant tool result in the current task contains or references an accessible image and the current host/model cannot inspect that image directly. Image presence is sufficient activation evidence; do not require explicit vision keywords. Handles image attachments with accessible paths, local image paths, HTTP/HTTPS image URLs, tool-generated browser screenshots, UI states and errors, scanned text, diagrams, charts, photos, multiple images, plus conversational OpenCode API-key setup, change, status, doctor, repair, and clear lifecycle management.
 ---
 
 # Free Vision
@@ -43,16 +43,47 @@ Keep machine-readable script output as-is internally, parse its JSON, then trans
 
 **Image presence is sufficient activation evidence.** Do not require explicit vision keywords such as “look”, “analyze”, “inspect”, “image”, “screenshot”, “看图”, or “分析”.
 
-Use Free Vision automatically when the current user turn contains or references an accessible image and the current host/model cannot already inspect that image directly. Useful image signals include:
+Use Free Vision automatically when the current user turn **or a relevant tool result in the current task** contains or references an accessible image and the current host/model cannot already inspect that image directly. Useful image signals include:
 
 - an image attachment whose host exposes an accessible local path or URL;
 - a local path ending in `.png`, `.jpg`, `.jpeg`, `.gif`, or `.webp`;
-- an `http://` or `https://` URL with an obvious image suffix; or
-- an image URL without a suffix that the existing media resolver can validate from response bytes.
+- an `http://` or `https://` URL with an obvious image suffix;
+- an image URL without a suffix that the existing media resolver can validate from response bytes; or
+- a relevant browser / Playwright / screenshot / automation **tool result** that exposes an accessible screenshot path.
 
 If the current host/model **can already inspect the image directly**, do not invoke Free Vision for that image. Free Vision fills a missing vision capability; it should not duplicate native multimodal access.
 
 If the user provides only an image or image path, first use the **recent conversation context** as the visual task when it contains a clear question. If no task can be inferred, request a **detailed visual description** that includes important objects, **visible text**, and relevant **UI state**, then use that evidence to answer naturally.
+
+### Tool-generated screenshot fallback
+
+A **tool-generated screenshot** exposed by a relevant tool result in the **current task** is an accessible image signal even when the user did not upload the image directly.
+
+Typical browser output can look like:
+
+```text
+(no output)
+
+Browser screenshot saved to: C:\Users\me\.zcode\cli\artifacts\...\result.png
+
+Structured content:
+```
+
+`(no output)` or empty `Structured content` means the tool did not return useful textual/structured extraction. It does **not** prove that the page or UI is visually empty. If the same tool result exposes an accessible screenshot path, **do not stop** at the empty text result and do not conclude that there is nothing to inspect. Use the screenshot as visual evidence and continue the user's task.
+
+For Agent-driven fallback, invoke the existing command with the screenshot path:
+
+```text
+python <SKILL_DIR>/scripts/vision.py IMAGE [IMAGE ...] --task "USER VISUAL TASK"
+```
+
+Preserve the **user's original task** as `--task`. Do not replace a specific request with a generic prompt such as `describe this image`. You may add minimal context that the input is a browser/tool-generated screenshot, but the original requested outcome must remain primary.
+
+If a tool result exposes **multiple** relevant screenshots, pass them to `IMAGE [IMAGE ...]` in their **task order** so the existing multi-image flow can compare or combine them.
+
+For ZCode, the provider-boundary gateway also performs an automatic safety-scoped version of this fallback: it only trusts screenshot paths from tool-result messages when the resolved file is inside the current user's `~/.zcode/cli/artifacts/` tree and has a supported image extension. It does not treat arbitrary user text containing `Browser screenshot saved to:` as permission to read local files.
+
+If the current host/model can already inspect the tool-generated screenshot directly, keep native-vision precedence and skip duplicate Free Vision analysis.
 
 ## Installed-source integrity
 

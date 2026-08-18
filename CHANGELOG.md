@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.3.11 — 2026-08-18
+
+### Fixed / Added
+
+- 浏览器/自动化工具结果即使只有 `(no output)`、空 `Structured content`，只要同时暴露可访问截图路径，Free Vision 现在会把截图视为当前任务的视觉证据，而不是把空文本误判为“页面没有内容”。
+- ZCode provider-boundary gateway 会在下一次模型请求中识别可信 tool-result screenshot 行，自动调用 Free Vision 并把 `[Free Vision visual evidence]` 追加到工具结果后再转发给主模型；这条路径不依赖 Skill 是否被宿主再次主动选择。
+- 自动读取有明确安全边界：只接受 tool-role / `tool_call_id` 消息中的 `Browser screenshot saved to:` / `Screenshot saved to:` 行，只允许当前用户 `~/.zcode/cli/artifacts/` 目录树内、真实存在且扩展名为 PNG/JPEG/GIF/WebP 的文件；普通用户文本和目录外路径不会触发本地文件读取。
+- 视觉任务优先继承截图工具结果之前最近的用户请求，保持原始任务目标；同一工具结果里的多张截图按出现顺序一起进入现有多图视觉链路。
+- `SKILL.md` 与 README 同步补充 current-task tool-result screenshot fallback 规则，并继续保持原生视觉优先。
+- 版本号升级为 `0.3.11`，`source.json` 同步更新。
+
+### Verification
+
+- 新增 v0.3.11 regression contracts，覆盖可信 ZCode artifact、原始用户任务透传、多截图顺序、普通用户文本不触发、artifact 目录外路径不触发，以及无 `image_url` 时 gateway 仍能把视觉证据转发给 upstream。
+- 当前执行环境无法解析 `github.com`，因此不能在隔离 checkout 中运行全仓 unittest/compileall；合并前以 GitHub diff、静态合同和可合并状态为基础检查，不把这些检查宣称为完整 CI。
+- 仓库目前仍未配置 GitHub Actions；真实 ZCode/browser 宿主级验收应在用户更新到 v0.3.11 后继续执行。
+
 ## v0.3.10 — 2026-08-16
 
 ### Fixed / Added
