@@ -152,7 +152,7 @@ class GatewayToolScreenshotTransformTests(unittest.TestCase):
             self.assertTrue(changed)
             self.assertEqual(calls[0][0], [str(first.resolve()), str(second.resolve())])
 
-    def test_untrusted_roles_and_paths_are_not_read(self):
+    def test_untrusted_roles_paths_and_structured_content_are_not_read(self):
         from free_vision.gateway_transform import transform_tool_screenshot_results
 
         with tempfile.TemporaryDirectory() as td:
@@ -180,6 +180,18 @@ class GatewayToolScreenshotTransformTests(unittest.TestCase):
                             "role": "tool",
                             "tool_call_id": "browser-3",
                             "content": f"Browser screenshot saved to: {outside}",
+                        }
+                    ]
+                },
+                {
+                    "messages": [
+                        {
+                            "role": "tool",
+                            "tool_call_id": "browser-structured",
+                            "content": (
+                                "Structured content:\n"
+                                f"Browser screenshot saved to: {inside}\n"
+                            ),
                         }
                     ]
                 },
